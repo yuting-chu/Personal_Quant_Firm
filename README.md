@@ -7,7 +7,6 @@
 ## 📌 模組架構
 
 - **`app.py`**：系統主程式入口與 Tab 導航。
-- **`finance.py`**：計量運算核心與市場數據抓取模組。
 - **`modules/`**：
   - `database.py`：SQLite 資料庫讀寫與交易日誌記錄。
   - `news_fetcher.py`：財經即時新聞爬取與解析。
