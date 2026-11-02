@@ -28,7 +28,7 @@ def fetch_macro_matrix(fred_api_key: str):
 
     if fred_api_key:
         try:
-            # 1. 抓取實體經濟數據 (CPI, PCE, 失業率)
+            # 1. 實體經濟數據 (物價與失業率)
             cpi_obs = fetch_fred_series_urllib(fred_api_key, "CPIAUCSL", limit=16)
             pce_obs = fetch_fred_series_urllib(fred_api_key, "PCEPILFE", limit=16)
             unrate_obs = fetch_fred_series_urllib(fred_api_key, "UNRATE", limit=16)
@@ -43,7 +43,7 @@ def fetch_macro_matrix(fred_api_key: str):
             unrate_diff = unrate_cur - float(unrate_obs[1]["value"])
             unrate_3m_change = unrate_cur - float(unrate_obs[3]["value"])
 
-            # 2. 抓取高盛級美債與利率架構數據 (10Y, 2Y, 10Y-2Y Spread, TIPS 實質利率, 信用利差)
+            # 2. 美債與利率數據 (10Y, 2Y, 利差, TIPS 實質利率, 信用利差)
             dgs10_obs = fetch_fred_series_urllib(fred_api_key, "DGS10", limit=10)
             dgs2_obs = fetch_fred_series_urllib(fred_api_key, "DGS2", limit=10)
             t10y2y_obs = fetch_fred_series_urllib(fred_api_key, "T10Y2Y", limit=10)
@@ -70,7 +70,6 @@ def fetch_macro_matrix(fred_api_key: str):
                 "pce_cur": round(pce_cur, 1), "pce_mom": round(pce_mom_ann, 2),
                 "unrate_cur": round(unrate_cur, 1), "unrate_diff": round(unrate_diff, 2),
                 "unrate_3m": round(unrate_3m_change, 2),
-                # 美債與利率核心數據
                 "dgs10_cur": round(dgs10_val, 2), "dgs10_diff": round(dgs10_diff, 2),
                 "dgs2_cur": round(dgs2_val, 2), "dgs2_diff": round(dgs2_diff, 2),
                 "t10y2y_cur": round(t10y2y_val, 2), "t10y2y_diff": round(t10y2y_diff, 2),
@@ -83,7 +82,6 @@ def fetch_macro_matrix(fred_api_key: str):
             is_live = False
 
     if not is_live:
-        # 高度擬真基準降級回退數據
         data_dict = {
             "cpi_cur": 3.4, "cpi_mom": 3.12,
             "pce_cur": 2.7, "pce_mom": 2.35,
@@ -113,73 +111,121 @@ def fetch_macro_matrix(fred_api_key: str):
 
 
 def render(api_key: str):
-    st.subheader("🌐 全自動總經數據與美債利率傳導戰情室 (FRED & CBOE Live Rates Engine)")
-    st.caption("融合高盛 gs-quant 曲線架構思維：以無風險利率為全球資產定價之錨，結合理率倒掛、實質利率與二階動量捕捉政策拐點。")
+    st.subheader("🌐 全球總經與美債利率戰情室")
+    st.caption("即時串接美國聯準會 (FRED) 官方數據。用最白話的方式，帶你看懂利率、通膨與跨市場資金的流向。")
 
     loaded_fred_key = st.session_state.get('fred_key', '')
     m, is_live = fetch_macro_matrix(loaded_fred_key)
 
     if is_live:
-        st.success(f"● 官方即時連線：FRED 利率與總經數據更新至 {m.get('rates_date', '')} | CBOE VIX 連線成功")
+        st.success(f"● 官方即時連線中：最新美債與總經數據截至 {m.get('rates_date', '')}")
     else:
-        st.warning("● 未連接即時 API 或使用離線基準數據 (請於左側欄確認 FRED API Key)")
+        st.warning("● 目前使用離線基準數據 (請於左側欄確認 FRED API Key)")
 
     # ==========================================
-    # 1. 雙矩陣：實體經濟 vs 美債利率定價架構
+    # 1. 雙矩陣：實體經濟 vs 美債利率 (白話直觀版)
     # ==========================================
-    col_macro, col_rates = st.columns(2)
-
-    with col_macro:
-        st.markdown("#### 📊 實體經濟與通膨動量 (Real Economy & Fed Targets)")
-        matrix_rows = [
-            {"指標名稱": "總體 CPI (YoY)", "最新數值": f"{m['cpi_cur']}%", "邊際動量趨勢": f"{m['cpi_mom']}% (3M年化)", "信號解讀": "通膨受控" if m['cpi_mom'] < 2.8 else "物價黏滯"},
-            {"指標名稱": "核心 PCE (Fed 標竿)", "最新數值": f"{m['pce_cur']}%", "邊際動量趨勢": f"{m['pce_mom']}% (3M年化)", "信號解讀": "偏好降息" if m['pce_mom'] <= 2.5 else "阻礙降息"},
-            {"指標名稱": "官方失業率 (U-Rate)", "最新數值": f"{m['unrate_cur']}%", "邊際動量趨勢": f"{m['unrate_diff']:+.2f}% MoM", "信號解讀": "緊俏" if m['unrate_cur'] <= 4.0 else ("健康中性" if m['unrate_cur'] <= 4.3 else "轉向寬鬆")},
-            {"指標名稱": "CBOE VIX 恐慌指數", "最新數值": f"{m['vix_cur']}", "邊際動量趨勢": f"{m['vix_diff']:+.2f} 點", "信號解讀": "收租有利 (Theta)" if m['vix_cur'] < 20 else "極端避險 (Vega)"}
-        ]
-        st.dataframe(pd.DataFrame(matrix_rows), use_container_width=True, hide_index=True)
+    col_rates, col_macro = st.columns(2)
 
     with col_rates:
-        st.markdown("#### 🏛️ 美債利率與流動性傳導矩陣 (US Treasury & Rates Curve)")
-        
-        # 判斷利差形態
+        st.markdown("#### 🏛️ 美債利率與借錢成本 (資金水位晴雨表)")
+        st.caption("美債殖利率是全球金融市場的「借錢成本基準」。利率越高，市場資金越吃緊。")
+
+        # 利差白話判斷
         spread_val = m["t10y2y_cur"]
         if spread_val < 0:
-            curve_signal = "🚨 倒掛警報 (衰退醞釀期)"
+            curve_signal = "🚨 倒掛警報（經濟可能要降溫或衰退）"
         elif spread_val < 0.20:
-            curve_signal = "⚡ 解掛陡峭化 (流動性轉折臨界點)"
+            curve_signal = "⚡ 解除倒掛中（市場正迎接降息拐點，常伴隨波動）"
         else:
-            curve_signal = "🟢 正常正斜率 (經濟擴張期)"
+            curve_signal = "🟢 正常正斜率（借長天期利息比短天期高，經濟健康）"
 
-        # 判斷實質利率水準
+        # 實質利率白話判斷
         tips_val = m["dfii10_cur"]
         if tips_val >= 2.0:
-            tips_signal = "🛑 深度緊縮 (高借貸成本/壓抑金價)"
+            tips_signal = "🛑 偏貴（實質借錢成本很高，壓抑黃金與高估值科技股）"
         elif tips_val >= 1.0:
-            tips_signal = "⚖️ 限制性中性"
+            tips_signal = "⚖️ 適中（中規中矩的實質利率）"
         else:
-            tips_signal = "🚀 實質寬鬆 (助推黃金/抗通膨資產)"
+            tips_signal = "🚀 寬鬆便宜（錢不值錢，有利黃金與抗通膨資產）"
 
         rates_rows = [
-            {"美債與利率核心指標": "10 年期美債殖利率 (DGS10)", "最新水準": f"{m['dgs10_cur']}%", "最新變動": f"{m['dgs10_diff']:+.2f}%", "定價傳導": "全球無風險折現率 (DCF分母)"},
-            {"美債與利率核心指標": "2 年期美債殖利率 (DGS2)", "最新水準": f"{m['dgs2_cur']}%", "最新變動": f"{m['dgs2_diff']:+.2f}%", "定價傳導": "Fed 未來1~2年基準利率預期"},
-            {"美債與利率核心指標": "10Y - 2Y 殖利率利差 (T10Y2Y)", "最新水準": f"{m['t10y2y_cur']}% ({spread_val * 100:+.0f} bps)", "最新變動": f"{m['t10y2y_diff']:+.2f}%", "定價傳導": curve_signal},
-            {"美債與利率核心指標": "10 年期 TIPS 實質利率 (DFII10)", "最新水準": f"{m['dfii10_cur']}%", "最新變動": f"{m['dfii10_diff']:+.2f}%", "定價傳導": tips_signal},
-            {"美債與利率核心指標": "高收益債信用利差 (HY OAS)", "最新水準": f"{m['hy_spread_cur']}%", "最新變動": f"{m['hy_spread_diff']:+.2f}%", "定價傳導": "流動性健康" if m['hy_spread_cur'] < 4.0 else "企業融資惡化"}
+            {
+                "指標 (白話說明)": "10年期美債殖利率 (各行各業借錢基準)",
+                "最新數值": f"{m['dgs10_cur']}%",
+                "今日漲跌": f"{m['dgs10_diff']:+.2f}%",
+                "白話意思": "全球資產定價基準，此數字越高，科技股估值壓力越大"
+            },
+            {
+                "指標 (白話說明)": "2年期美債殖利率 (市場預期Fed近況)",
+                "最新數值": f"{m['dgs2_cur']}%",
+                "今日漲跌": f"{m['dgs2_diff']:+.2f}%",
+                "白話意思": "市場猜測聯準會未來 1~2 年到底會升息還是降息"
+            },
+            {
+                "指標 (白話說明)": "10Y-2Y 利差 (景氣長短天期氣壓計)",
+                "最新數值": f"{m['t10y2y_cur']}% ({spread_val * 100:+.0f}點)",
+                "今日漲跌": f"{m['t10y2y_diff']:+.2f}%",
+                "白話意思": curve_signal
+            },
+            {
+                "指標 (白話說明)": "10年期實質利率 (扣除通膨後的真成本)",
+                "最新數值": f"{m['dfii10_cur']}%",
+                "今日漲跌": f"{m['dfii10_diff']:+.2f}%",
+                "白話意思": tips_signal
+            },
+            {
+                "指標 (白話說明)": "垃圾債違約風險利差 (企業倒閉機率)",
+                "最新數值": f"{m['hy_spread_cur']}%",
+                "今日漲跌": f"{m['hy_spread_diff']:+.2f}%",
+                "白話意思": "企業信用良好，大家不怕違約" if m['hy_spread_cur'] < 4.0 else "企業借錢變難，市場開始警惕倒閉潮"
+            }
         ]
         st.dataframe(pd.DataFrame(rates_rows), use_container_width=True, hide_index=True)
+
+    with col_macro:
+        st.markdown("#### 📊 物價通膨與失業率 (百姓生活與就業體溫)")
+        st.caption("聯準會 (Fed) 掌管利率最重要的兩大指標：有沒有人人有工作？東西有沒有變太貴？")
+
+        matrix_rows = [
+            {
+                "指標 (白話說明)": "總體 CPI (一般百姓物價年增率)",
+                "最新數值": f"{m['cpi_cur']}%",
+                "近期3個月動向": f"{m['cpi_mom']}% (年化)",
+                "白話意思": "物價算聽話，通膨在可控範圍" if m['cpi_mom'] < 2.8 else "東西還在漲，通膨有點難降"
+            },
+            {
+                "指標 (白話說明)": "核心 PCE (官員最在意的通膨標竿)",
+                "最新數值": f"{m['pce_cur']}%",
+                "近期3個月動向": f"{m['pce_mom']}% (年化)",
+                "白話意思": "通膨達標，官員較願意考慮降息" if m['pce_mom'] <= 2.5 else "通膨稍微偏頑固，不敢太快降息"
+            },
+            {
+                "指標 (白話說明)": "失業率 (大家有沒有工作)",
+                "最新數值": f"{m['unrate_cur']}%",
+                "近期3個月動向": f"{m['unrate_diff']:+.2f}% (月增)",
+                "白話意思": "就業非常強，不怕失業" if m['unrate_cur'] <= 4.0 else ("就業很健康穩健" if m['unrate_cur'] <= 4.3 else "找工作開始變難了")
+            },
+            {
+                "指標 (白話說明)": "VIX 恐慌指數 (股市心跳指數)",
+                "最新數值": f"{m['vix_cur']}",
+                "近期3個月動向": f"{m['vix_diff']:+.2f} 點",
+                "白話意思": "市場風平浪靜，適合穩健收租" if m['vix_cur'] < 20 else "市場大震盪，大家都在買保險避險"
+            }
+        ]
+        st.dataframe(pd.DataFrame(matrix_rows), use_container_width=True, hide_index=True)
 
     st.markdown("---")
 
     # ==========================================
-    # 2. 利率曲線可視化圖表 (Yield Curve Term Structure)
+    # 2. 利率結構視覺化 (直觀圖表)
     # ==========================================
-    st.markdown("#### 📈 美國公債長短天期殖利率與利差架構 (Term Structure)")
+    st.markdown("#### 📈 美債長短天期利率一覽")
     col_chart, col_curve_info = st.columns([1.6, 1.0])
 
     with col_chart:
         fig_curve = go.Figure()
-        terms = ["2Y (政策預期)", "10Y (無風險折現)", "10Y-2Y 利差", "10Y TIPS (實質利率)"]
+        terms = ["2年期 (短期政策)", "10年期 (長期基準)", "長短利差 (倒掛指標)", "實質利率 (扣除通膨)"]
         vals = [m["dgs2_cur"], m["dgs10_cur"], m["t10y2y_cur"], m["dfii10_cur"]]
         colors = ["#268bd2", "#2aa198", "#d33682" if m["t10y2y_cur"] < 0 else "#27ae60", "#f39c12"]
 
@@ -196,68 +242,68 @@ def render(api_key: str):
             paper_bgcolor="#161922",
             plot_bgcolor="#161922",
             font=dict(color="#e6edf3"),
-            yaxis=dict(title="殖利率 (%)", gridcolor="#2d3139"),
+            yaxis=dict(title="利率水準 (%)", gridcolor="#2d3139"),
             xaxis=dict(gridcolor="#2d3139")
         )
         st.plotly_chart(fig_curve, use_container_width=True)
 
     with col_curve_info:
         st.markdown(f"""
-        <div style="background-color: #1a1e29; border: 1px solid #2d3139; border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.7; color: #c9d1d9;">
+        <div style="background-color: #1a1e29; border: 1px solid #2d3139; border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.8; color: #c9d1d9;">
             <div style="font-weight: bold; color: #58a6ff; font-size: 14px; margin-bottom: 8px;">
-                🏛️ 高盛利率架構解碼 (Yield Curve Context)
+                💡 30 秒白話讀懂這張圖
             </div>
-            • <b>名目利率定價</b>：10Y 美債為 <b>{m['dgs10_cur']}%</b>，此數值為全球權益資產折現模型 (CAPM/DCF) 的基石。<br>
-            • <b>期限利差形態</b>：當前 10Y-2Y 利差為 <b>{m['t10y2y_cur']}%</b>（{curve_signal}）。歷史統計顯示，倒掛後轉為陡峭化的時期對資產價格最具破壞性。<br>
-            • <b>實質資金成本</b>：TIPS 實質利率高達 <b>{m['dfii10_cur']}%</b>，高於過去十年中位數 (約 0.8%)，表彰實質融資環境偏緊。
+            1. <b>借錢基準</b>：10年期美債在 <b>{m['dgs10_cur']}%</b>。銀行房貸、大企業發債都要加這個數字當底標。<br>
+            2. <b>利差看景氣</b>：正常情況借錢越久、利息要越高。現在利差為 <b>{m['t10y2y_cur']}%</b>（{curve_signal}）。<br>
+            3. <b>黃金與資產天敵</b>：實質利率高達 <b>{m['dfii10_cur']}%</b>，借錢放在銀行拿真利息就很誘人，這會讓不生利息的黃金與高估值股票受到壓抑。
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("---")
 
     # ==========================================
-    # 3. 聯準會九宮格自動定位 (以失業率與核心 PCE 為軸)
+    # 3. 聯準會九宮格自動定位 (白話生活化說明)
     # ==========================================
     pce_val = m['pce_mom']
     unrate_val = m['unrate_cur']
 
     if unrate_val <= 4.0:
-        labor_label = "就業強 (失業率 ≤ 4.0%)"
+        labor_label = "就業旺 (失業率 ≤ 4.0%)"
         target_row = 0
     elif unrate_val <= 4.4:
-        labor_label = "就業穩健 (失業率 4.1%~4.4%)"
+        labor_label = "就業穩 (失業率 4.1%~4.4%)"
         target_row = 1
     else:
-        labor_label = "就業疲弱 (失業率 > 4.4%)"
+        labor_label = "就業疲 (失業率 > 4.4%)"
         target_row = 2
 
     if pce_val > 2.9:
-        inf_label = "通膨高 (>2.9%)"
+        inf_label = "通膨熱 (>2.9%)"
         target_col = 2
     elif pce_val >= 2.3:
-        inf_label = "通膨中 (2.3%~2.9%)"
+        inf_label = "通膨溫 (2.3%~2.9%)"
         target_col = 1
     else:
-        inf_label = "通膨低 (<2.3%)"
+        inf_label = "通膨涼 (<2.3%)"
         target_col = 0
 
     col_grid, col_trans = st.columns([1.2, 1.3])
 
     with col_grid:
-        st.markdown(f"#### 🎯 聯準會九宮格政策象限 (【{labor_label.split(' ')[0]} x {inf_label.split(' ')[0]}】)")
+        st.markdown(f"#### 🎯 聯準會現在處在哪裡？ (【{labor_label.split(' ')[0]} × {inf_label.split(' ')[0]}】)")
         grid_matrix = [
             ["溫和成長", "小心觀望", "升息壓力"],
             ["預防性降息", "按兵不動", "兩難困境"],
             ["衰退式降息", "轉向降息", "停滯性通膨"]
         ]
-        row_headers = ["【低失業 (≤4.0%)】", "【中失業 (4.1~4.4%)】", "【高失業 (>4.4%)】"]
-        col_headers = ["通膨低 (<2.3%)", "通膨中 (2.3%~2.9%)", "通膨高 (>2.9%)"]
+        row_headers = ["【工作很好找 (低失業)】", "【就業算正常 (中失業)】", "【找工作變難 (高失業)】"]
+        col_headers = ["物價舒服 (<2.3%)", "物價還好 (2.3%~2.9%)", "物價很貴 (>2.9%)"]
 
         table_html = """
         <table style="width:100%; border-collapse: collapse; font-size: 13px; text-align: center; background-color: #161922; border-radius: 8px; overflow: hidden; border: 1px solid #2d3139;">
             <thead>
                 <tr style="background-color: #1f2430; color: #8b949e; border-bottom: 2px solid #2d3139;">
-                    <th style="padding: 10px; border-right: 1px solid #2d3139;">失業水準 \\ 通膨動量</th>
+                    <th style="padding: 10px; border-right: 1px solid #2d3139;">就業狀況 \\ 物價漲勢</th>
         """
         for ch in col_headers:
             table_html += f"<th style='padding: 10px; border-right: 1px solid #2d3139;'>{ch}</th>"
@@ -271,7 +317,7 @@ def render(api_key: str):
                     bg = "rgba(0, 204, 150, 0.25)"
                     border_style = "border: 2px solid #00cc96;"
                     text_color = "#00ffbe; font-weight: bold;"
-                    marker = "<br><span style='font-size:10px; color:#00ffbe;'>📍[當前定位]</span>"
+                    marker = "<br><span style='font-size:10px; color:#00ffbe;'>📍[現在位置]</span>"
                 else:
                     bg = "transparent"
                     border_style = "border-right: 1px solid #2d3139; border-bottom: 1px solid #2d3139;"
@@ -284,17 +330,17 @@ def render(api_key: str):
         st.markdown(table_html, unsafe_allow_html=True)
 
     with col_trans:
-        st.markdown("#### ⚡ 跨資產定價傳導指引 (Multi-Asset Transmission)")
+        st.markdown("#### ⚡ 跨市場實戰白話指引 (現在該怎麼投資？)")
         st.markdown(f"""
         <div style="background-color: #0d2820; border: 1px solid #00cc96; border-radius: 8px; padding: 14px 18px; color: #ffffff; min-height: 220px; font-size: 13px; line-height: 1.8;">
             <div style="font-weight: bold; color: #00cc96; font-size: 14px; margin-bottom: 6px;">
-                【五大資產類別操作方針：10Y 美債 {m['dgs10_cur']}% × 實質利率 {m['dfii10_cur']}%】
+                【五大市場快速白話指南：美債 {m['dgs10_cur']}% × 實質利率 {m['dfii10_cur']}%】
             </div>
-            • 🏛️ <b>固定收益 (債券)：</b> 10Y-2Y 利差處於 {m['t10y2y_cur']}%，建議配置中天期公債 (5-7Y) 鎖定高息，防範長端利差進一步走陡帶來的波動。<br>
-            • 📈 <b>股票 (權益)：</b> 10Y 實質利率在 {m['dfii10_cur']}% 高位運行，高估值無獲利科技股承壓；偏好具備高自由現金流與強定價權的高品質 (Quality) 權值股。<br>
-            • 🪙 <b>黃金與大宗商品：</b> 實質利率水準制約黃金投機溢價；黃金主要作為防範地緣風險之戰略對衝 (維持 5~8% 基礎配置)。<br>
-            • 💵 <b>外匯 (USD/JPY)：</b> 美日 10 年期國債利差維持深厚緩衝，但在 Fed 政策轉向預期下，嚴格設置 20MA 停損以防範 Carry Trade 擠壓。<br>
-            • 🛡️ <b>選擇權 (SPY)：</b> VIX 指數現為 {m['vix_cur']}，波動度適中，適合以垂直價差 (Vertical Spreads) 取代純粹裸賣，保護尾端極端風險。
+            • 🏛️ <b>債券 (固定利息)：</b> 現在 10 年美債有接近 5% 左右的收益，買中天期公債 (約5~7年) 鎖住利息很香，不用過度賭太長期的債券避免波動過大。<br>
+            • 📈 <b>股票 (美股/台股)：</b> 借錢成本高時，只會講夢想、沒賺現金的公司會很慘；多挑選「現金流滿滿、賺錢容易」的大龍頭公司。<br>
+            • 🪙 <b>黃金與商品：</b> 實質利率在高檔，拿現金放銀行都很划算，黃金不要盲目追高，維持 5~8% 當作打仗或亂世防身保險就好。<br>
+            • 💵 <b>外匯 (美金換日圓)：</b> 美日利息差還是很大，美金依舊強勢；但要隨時留意若美國真要快速降息，日圓可能快速升值，要設好停損。<br>
+            • 🛡️ <b>選擇權策略：</b> 恐慌指數 VIX 目前為 {m['vix_cur']}，市場波動不大，適合穩穩賣出價差合約收時間租金。
         </div>
         """, unsafe_allow_html=True)
 
@@ -303,8 +349,9 @@ def render(api_key: str):
     # ==========================================
     # 4. 首席宏觀策略官 (Gemini AI Global Macro Strategist)
     # ==========================================
-    st.markdown("#### 🤖 首席宏觀策略官 (AI Global Macro Strategist)")
-    if st.button("🚀 執行美債與跨資產深度投研評估", key="btn_macro_ai_upgrade"):
+    st.markdown("#### 🤖 首席宏觀策略官 (AI 深入研報生成)")
+    st.caption("研報將保持華爾街投行級的嚴謹計量術語，同時在每個核心結論後附上白話解讀。")
+    if st.button("🚀 產出機構級深度研究報告", key="btn_macro_ai_upgrade"):
         if not api_key:
             st.error("請在側邊欄設定 Gemini API Key！")
         else:
@@ -314,10 +361,10 @@ def render(api_key: str):
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     prompt = f"""
                     你是一位華爾街頂級對衝基金的 Chief Global Macro Strategist（首席全球宏觀策略官）。
-                    請根據以下即時利率與總經數據：
+                    請根據以下即時數據進行深度跨資產研報分析：
                     - 10 年期美債殖利率 (DGS10)：{m['dgs10_cur']}% (1D 變化 {m['dgs10_diff']:+.2f}%)
                     - 2 年期美債殖利率 (DGS2)：{m['dgs2_cur']}% (1D 變化 {m['dgs2_diff']:+.2f}%)
-                    - 10Y - 2Y 殖利率利差 (T10Y2Y)：{m['t10y2y_cur']}% (當前形態：{curve_signal})
+                    - 10Y - 2Y 殖利率利差 (T10Y2Y)：{m['t10y2y_cur']}% (形態：{curve_signal})
                     - 10 年期 TIPS 實質利率 (DFII10)：{m['dfii10_cur']}%
                     - 高收益債信用利差：{m['hy_spread_cur']}%
                     - 總體 CPI 3M 年化動量：{m['cpi_mom']}%
@@ -326,10 +373,13 @@ def render(api_key: str):
                     - CBOE VIX 恐慌指數：{m['vix_cur']}
                     - 聯準會九宮格定位：【{labor_label.split(' ')[0]} x {inf_label.split(' ')[0]}】
 
-                    請輸出嚴格的機構級投研分析報告，必須包含：
-                    1. 【美債曲線解碼】：分析 10Y-2Y 利差與實質利率對景氣衰退/軟著陸的推論。
-                    2. 【聯準會路徑推估】：預測未來 1~2 季度的基準利率走向。
-                    3. 【跨資產配置權重指引】：分別給予（債券存續期 Duration、美股因子風格、黃金與原油、外匯 Carry Trade）具體操作策略。
+                    【格式與風格要求】：
+                    1. 保持華爾街投行級專業深度，詳細分析（利差期限結構、折現率、實質利率傳導）。
+                    2. **重點要求**：在每個章節或核心推論結尾，務必用【白話大白話總結】附上一句大眾能懂的白話解讀，說明這對投資人錢包到底有何影響。
+                    3. 內容需包含：
+                       - 美債曲線與景氣衰退預警
+                       - 聯準會基準利率路徑推算
+                       - 跨資產（股票、債券存續期、黃金商品、外匯 Carry）配置百分比與操作建議
                     """
                     res = model.generate_content(prompt)
                     st.info(res.text)
@@ -341,7 +391,7 @@ def render(api_key: str):
     # ==========================================
     # 5. Yahoo Finance 全球即時財經頭條
     # ==========================================
-    st.markdown("#### 📰 Yahoo Finance 全球即時財經頭條 (即時資訊流與要點導讀)")
+    st.markdown("#### 📰 即時全球財經頭條")
     news_list = fetch_yahoo_finance_news()
 
     if not news_list:
@@ -359,7 +409,7 @@ def render(api_key: str):
                     </span>
                 </div>
                 <div style="font-size: 13px; color: #a0aec0; line-height: 1.5; margin-top: 4px; margin-bottom: 8px;">
-                    【市場要點導讀】該事件涉及全球宏觀利率與主要權值股資金流向，對短線市場波動度與產業鏈定價產生連鎖影響。
+                    【白話重點解讀】該事件涉及重要資金與市場流向，可能連帶影響科技股與大盤短期波動。
                 </div>
                 <div>
                     <a href="{item['link']}" target="_blank" style="color: #00cc96; text-decoration: none; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center;">
