@@ -123,102 +123,118 @@ def render(api_key: str):
         st.warning("● 目前使用離線基準數據 (請於左側欄確認 FRED API Key)")
 
     # ==========================================
-    # 1. 雙矩陣：實體經濟 vs 美債利率 (白話直觀版)
+    # 1. 雙矩陣：左右相反放置 (左: 物價失業率 / 右: 美債借錢成本)，無滾動條全顯設計
     # ==========================================
-    col_rates, col_macro = st.columns(2)
+    col_macro, col_rates = st.columns(2)
 
+    # ------------------ 左側：物價通膨與失業率 ------------------
+    with col_macro:
+        st.markdown("#### 📊 物價通膨與失業率 (實體經濟體溫)")
+        st.caption("聯準會 (Fed) 掌管利率最重要的兩大指標：東西有沒有太貴？工作好不好找？")
+
+        macro_rows = [
+            ("總體 CPI (百姓生活物價)", f"{m['cpi_cur']}%", f"{m['cpi_mom']}% (3M年化)", "#58a6ff",
+             "物價算聽話，通膨在可控範圍" if m['cpi_mom'] < 2.8 else "東西還在漲，通膨稍微黏滯"),
+            ("核心 PCE (Fed 降息標竿)", f"{m['pce_cur']}%", f"{m['pce_mom']}% (3M年化)", "#00cc96" if m['pce_mom'] <= 2.5 else "#ffaa00",
+             "通膨達標，官員較願意考慮降息" if m['pce_mom'] <= 2.5 else "通膨稍微偏頑固，不敢太快降息"),
+            ("失業率 (就業體溫計)", f"{m['unrate_cur']}%", f"{m['unrate_diff']:+.2f}% (月變動)", "#00cc96" if m['unrate_cur'] <= 4.0 else "#58a6ff",
+             "就業非常強，不怕失業" if m['unrate_cur'] <= 4.0 else ("就業很健康穩健" if m['unrate_cur'] <= 4.3 else "找工作開始變難了")),
+            ("VIX 恐慌指數 (股市心跳)", f"{m['vix_cur']}", f"{m['vix_diff']:+.2f} 點", "#00cc96" if m['vix_cur'] < 20 else "#ff4b4b",
+             "市場風平浪靜，適合穩健收租" if m['vix_cur'] < 20 else "市場大震盪，大家都在買保險避險")
+        ]
+
+        html_macro_table = """
+        <table style="width:100%; border-collapse: collapse; font-size: 13px; text-align: left; background-color: #161922; border-radius: 8px; overflow: hidden; border: 1px solid #2d3139;">
+            <thead>
+                <tr style="background-color: #1f2430; color: #8b949e; border-bottom: 2px solid #2d3139;">
+                    <th style="padding: 10px 10px; width: 32%;">指標 (白話說明)</th>
+                    <th style="padding: 10px 8px; width: 18%; text-align: right;">最新數值</th>
+                    <th style="padding: 10px 8px; width: 22%; text-align: right;">近期3個月</th>
+                    <th style="padding: 10px 10px; width: 28%;">白話意義</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        for name, val, trend, color, meaning in macro_rows:
+            html_macro_table += f"""
+                <tr style="border-bottom: 1px solid #232733;">
+                    <td style="padding: 10px 10px; font-weight: 600; color: #e6edf3;">{name}</td>
+                    <td style="padding: 10px 8px; text-align: right; font-family: monospace; font-size: 14px; font-weight: bold; color: {color};">{val}</td>
+                    <td style="padding: 10px 8px; text-align: right; font-family: monospace; color: #c9d1d9;">{trend}</td>
+                    <td style="padding: 10px 10px; color: #a0aec0; font-size: 12px; line-height: 1.4;">{meaning}</td>
+                </tr>
+            """
+        html_macro_table += "</tbody></table>"
+        st.markdown(html_macro_table, unsafe_allow_html=True)
+
+    # ------------------ 右側：美債利率與借錢成本 ------------------
     with col_rates:
-        st.markdown("#### 🏛️ 美債利率與借錢成本 (資金水位晴雨表)")
-        st.caption("美債殖利率是全球金融市場的「借錢成本基準」。利率越高，市場資金越吃緊。")
+        st.markdown("#### 🏛️ 美債利率與資金成本 (借錢水位晴雨表)")
+        st.caption("美債殖利率是全球所有金融資產的「借錢基準」。利率越高，市場資金越吃緊。")
 
-        # 利差白話判斷
         spread_val = m["t10y2y_cur"]
         if spread_val < 0:
-            curve_signal = "🚨 倒掛警報（經濟可能要降溫或衰退）"
+            curve_signal = "🚨 倒掛警報 (經濟可能要降溫)"
+            spread_color = "#ff4b4b"
         elif spread_val < 0.20:
-            curve_signal = "⚡ 解除倒掛中（市場正迎接降息拐點，常伴隨波動）"
+            curve_signal = "⚡ 解除倒掛 (降息拐點，常伴隨波動)"
+            spread_color = "#ffaa00"
         else:
-            curve_signal = "🟢 正常正斜率（借長天期利息比短天期高，經濟健康）"
+            curve_signal = "🟢 正常正斜率 (借長比利息高，經濟健康)"
+            spread_color = "#00cc96"
 
-        # 實質利率白話判斷
         tips_val = m["dfii10_cur"]
         if tips_val >= 2.0:
-            tips_signal = "🛑 偏貴（實質借錢成本很高，壓抑黃金與高估值科技股）"
+            tips_signal = "🛑 偏貴 (真借錢成本高，壓抑黃金科技股)"
+            tips_color = "#ff4b4b"
         elif tips_val >= 1.0:
-            tips_signal = "⚖️ 適中（中規中矩的實質利率）"
+            tips_signal = "⚖️ 適中 (中規中矩的實質利率)"
+            tips_color = "#ffaa00"
         else:
-            tips_signal = "🚀 寬鬆便宜（錢不值錢，有利黃金與抗通膨資產）"
+            tips_signal = "🚀 寬鬆便宜 (有利黃金與抗通膨資產)"
+            tips_color = "#00cc96"
 
         rates_rows = [
-            {
-                "指標 (白話說明)": "10年期美債殖利率 (各行各業借錢基準)",
-                "最新數值": f"{m['dgs10_cur']}%",
-                "今日漲跌": f"{m['dgs10_diff']:+.2f}%",
-                "白話意思": "全球資產定價基準，此數字越高，科技股估值壓力越大"
-            },
-            {
-                "指標 (白話說明)": "2年期美債殖利率 (市場預期Fed近況)",
-                "最新數值": f"{m['dgs2_cur']}%",
-                "今日漲跌": f"{m['dgs2_diff']:+.2f}%",
-                "白話意思": "市場猜測聯準會未來 1~2 年到底會升息還是降息"
-            },
-            {
-                "指標 (白話說明)": "10Y-2Y 利差 (景氣長短天期氣壓計)",
-                "最新數值": f"{m['t10y2y_cur']}% ({spread_val * 100:+.0f}點)",
-                "今日漲跌": f"{m['t10y2y_diff']:+.2f}%",
-                "白話意思": curve_signal
-            },
-            {
-                "指標 (白話說明)": "10年期實質利率 (扣除通膨後的真成本)",
-                "最新數值": f"{m['dfii10_cur']}%",
-                "今日漲跌": f"{m['dfii10_diff']:+.2f}%",
-                "白話意思": tips_signal
-            },
-            {
-                "指標 (白話說明)": "垃圾債違約風險利差 (企業倒閉機率)",
-                "最新數值": f"{m['hy_spread_cur']}%",
-                "今日漲跌": f"{m['hy_spread_diff']:+.2f}%",
-                "白話意思": "企業信用良好，大家不怕違約" if m['hy_spread_cur'] < 4.0 else "企業借錢變難，市場開始警惕倒閉潮"
-            }
+            ("10年期美債 (借錢底標基準)", f"{m['dgs10_cur']}%", f"{m['dgs10_diff']:+.2f}%", "#2aa198",
+             "全球資產借錢基準，越高則科技股壓力越大"),
+            ("2年期美債 (市場猜Fed)", f"{m['dgs2_cur']}%", f"{m['dgs2_diff']:+.2f}%", "#268bd2",
+             "市場猜測聯準會未來 1~2 年升降息走向"),
+            ("10Y-2Y 利差 (長短天期氣壓)", f"{m['t10y2y_cur']}%", f"{m['t10y2y_diff']:+.2f}%", spread_color,
+             curve_signal),
+            ("10年實質利率 (扣除通膨真成本)", f"{m['dfii10_cur']}%", f"{m['dfii10_diff']:+.2f}%", tips_color,
+             tips_signal),
+            ("高收益債違約利差 (企業倒閉率)", f"{m['hy_spread_cur']}%", f"{m['hy_spread_diff']:+.2f}%", "#00cc96" if m['hy_spread_cur'] < 4.0 else "#ff4b4b",
+             "企業信用良好不愁借錢" if m['hy_spread_cur'] < 4.0 else "企業借錢變難，市場開始警惕倒閉")
         ]
-        st.dataframe(pd.DataFrame(rates_rows), use_container_width=True, hide_index=True)
 
-    with col_macro:
-        st.markdown("#### 📊 物價通膨與失業率 (百姓生活與就業體溫)")
-        st.caption("聯準會 (Fed) 掌管利率最重要的兩大指標：有沒有人人有工作？東西有沒有變太貴？")
-
-        matrix_rows = [
-            {
-                "指標 (白話說明)": "總體 CPI (一般百姓物價年增率)",
-                "最新數值": f"{m['cpi_cur']}%",
-                "近期3個月動向": f"{m['cpi_mom']}% (年化)",
-                "白話意思": "物價算聽話，通膨在可控範圍" if m['cpi_mom'] < 2.8 else "東西還在漲，通膨有點難降"
-            },
-            {
-                "指標 (白話說明)": "核心 PCE (官員最在意的通膨標竿)",
-                "最新數值": f"{m['pce_cur']}%",
-                "近期3個月動向": f"{m['pce_mom']}% (年化)",
-                "白話意思": "通膨達標，官員較願意考慮降息" if m['pce_mom'] <= 2.5 else "通膨稍微偏頑固，不敢太快降息"
-            },
-            {
-                "指標 (白話說明)": "失業率 (大家有沒有工作)",
-                "最新數值": f"{m['unrate_cur']}%",
-                "近期3個月動向": f"{m['unrate_diff']:+.2f}% (月增)",
-                "白話意思": "就業非常強，不怕失業" if m['unrate_cur'] <= 4.0 else ("就業很健康穩健" if m['unrate_cur'] <= 4.3 else "找工作開始變難了")
-            },
-            {
-                "指標 (白話說明)": "VIX 恐慌指數 (股市心跳指數)",
-                "最新數值": f"{m['vix_cur']}",
-                "近期3個月動向": f"{m['vix_diff']:+.2f} 點",
-                "白話意思": "市場風平浪靜，適合穩健收租" if m['vix_cur'] < 20 else "市場大震盪，大家都在買保險避險"
-            }
-        ]
-        st.dataframe(pd.DataFrame(matrix_rows), use_container_width=True, hide_index=True)
+        html_rates_table = """
+        <table style="width:100%; border-collapse: collapse; font-size: 13px; text-align: left; background-color: #161922; border-radius: 8px; overflow: hidden; border: 1px solid #2d3139;">
+            <thead>
+                <tr style="background-color: #1f2430; color: #8b949e; border-bottom: 2px solid #2d3139;">
+                    <th style="padding: 10px 10px; width: 33%;">美債/利率指標</th>
+                    <th style="padding: 10px 8px; width: 18%; text-align: right;">最新水準</th>
+                    <th style="padding: 10px 8px; width: 17%; text-align: right;">今日變動</th>
+                    <th style="padding: 10px 10px; width: 32%;">白話意思</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        for name, val, diff, color, meaning in rates_rows:
+            html_rates_table += f"""
+                <tr style="border-bottom: 1px solid #232733;">
+                    <td style="padding: 9px 10px; font-weight: 600; color: #e6edf3;">{name}</td>
+                    <td style="padding: 9px 8px; text-align: right; font-family: monospace; font-size: 14px; font-weight: bold; color: {color};">{val}</td>
+                    <td style="padding: 9px 8px; text-align: right; font-family: monospace; color: #c9d1d9;">{diff}</td>
+                    <td style="padding: 9px 10px; color: #a0aec0; font-size: 12px; line-height: 1.4;">{meaning}</td>
+                </tr>
+            """
+        html_rates_table += "</tbody></table>"
+        st.markdown(html_rates_table, unsafe_allow_html=True)
 
     st.markdown("---")
 
     # ==========================================
-    # 2. 利率結構視覺化 (直觀圖表)
+    # 2. 利率結構視覺化 (直觀長條圖)
     # ==========================================
     st.markdown("#### 📈 美債長短天期利率一覽")
     col_chart, col_curve_info = st.columns([1.6, 1.0])
@@ -237,8 +253,8 @@ def render(api_key: str):
             marker_color=colors
         ))
         fig_curve.update_layout(
-            height=280,
-            margin=dict(l=20, r=20, t=30, b=20),
+            height=260,
+            margin=dict(l=20, r=20, t=25, b=20),
             paper_bgcolor="#161922",
             plot_bgcolor="#161922",
             font=dict(color="#e6edf3"),
@@ -262,7 +278,7 @@ def render(api_key: str):
     st.markdown("---")
 
     # ==========================================
-    # 3. 聯準會九宮格自動定位 (白話生活化說明)
+    # 3. 聯準會九宮格自動定位 (生活化說明)
     # ==========================================
     pce_val = m['pce_mom']
     unrate_val = m['unrate_cur']
@@ -347,7 +363,7 @@ def render(api_key: str):
     st.markdown("---")
 
     # ==========================================
-    # 4. 首席宏觀策略官 (Gemini AI Global Macro Strategist)
+    # 4. 首席宏觀策略官 (Gemini AI 深入研報生成)
     # ==========================================
     st.markdown("#### 🤖 首席宏觀策略官 (AI 深入研報生成)")
     st.caption("研報將保持華爾街投行級的嚴謹計量術語，同時在每個核心結論後附上白話解讀。")

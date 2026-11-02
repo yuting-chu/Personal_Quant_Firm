@@ -106,7 +106,14 @@ with st.sidebar:
                 loaded_gemini_key = st.secrets.get("GEMINI_API_KEY", "")
             except Exception:
                 pass
-        api_key = st.text_input("Gemini API Key：", value=loaded_gemini_key, type="password")
+        has_gemini = bool(loaded_gemini_key)
+        user_gemini_key = st.text_input(
+            "Gemini API Key：",
+            type="password",
+            placeholder="● 已由後端安全載入 (金鑰已隱藏保護)" if has_gemini else "未檢測到金鑰，請手動輸入",
+            help="系統已由後端環境變數或 Secrets 自動安全注入，外部造訪者無法透過 F12 檢視您的真實金鑰。" if has_gemini else "請輸入您的 Gemini API Key"
+        )
+        api_key = user_gemini_key.strip() if user_gemini_key.strip() else loaded_gemini_key
 
         loaded_fred_key = os.getenv("FRED_API_KEY", "")
         if not loaded_fred_key:
@@ -114,7 +121,15 @@ with st.sidebar:
                 loaded_fred_key = st.secrets.get("FRED_API_KEY", "")
             except Exception:
                 pass
-        fred_key = st.text_input("FRED API Key：", value=loaded_fred_key, type="password")
+        has_fred = bool(loaded_fred_key)
+        user_fred_key = st.text_input(
+            "FRED API Key：",
+            type="password",
+            placeholder="● 已由後端安全載入 (金鑰已隱藏保護)" if has_fred else "未檢測到金鑰，請手動輸入",
+            help="系統已由後端環境變數或 Secrets 自動安全注入，外部造訪者無法透過 F12 檢視您的真實金鑰。" if has_fred else "請輸入您的 FRED API Key"
+        )
+        fred_key = user_fred_key.strip() if user_fred_key.strip() else loaded_fred_key
+        st.session_state['fred_key'] = fred_key
 
         st.selectbox("交易環境：", ["IG Group CFD (Live)", "IBKR Gateway (Paper Trading)"])
         if st.button("🔄 清除快取並重新整理行情"):
