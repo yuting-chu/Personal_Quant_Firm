@@ -1,4 +1,4 @@
-# Personal Quant Company | 旗艦量化與總經戰情中心
+# Personal Quant Firm | 旗艦量化與總經戰情中心
 
 一個基於 Python 與 Streamlit 開發的高階量化投資與總經分析戰情平台。
 
@@ -12,7 +12,7 @@
   - `news_fetcher.py`：財經即時新聞爬取與解析。
   - `tradingview.py`：技術分析圖表串接。
 - **`views/`**：
-  - `tab_macro.py`：全球總體經濟指標、公債殖利率曲線、FRED 經濟數據。
+  - `tab_macro.py`：全球總體經濟指標、美債殖利率曲線、FRED 經濟與利率數據。
   - `tab_industry.py`：產業輪動、標的估值與基本面分析。
   - `tab_backtest.py`：多因子量化策略歷史回測與風險報酬指標評估。
   - `tab_risk.py`：部位即時風險暴露、VaR（風險值）與壓力測試。
@@ -48,7 +48,7 @@
 ## ☁️ 部署至 Streamlit Community Cloud
 
 1. 將本專案推播（Push）至您的 GitHub 儲存庫。
-2. 前往 [Streamlit Community Cloud](https://share.streamlit.io/) 並連結此 Repository。
+2. 前往 [Streamlit Community Cloud](https://share.streamlit.io/) 並連結此 Repository (`yuting-chu/Personal_Quant_Firm`)。
 3. Main file path 選擇 `app.py`。
 4. **【重要資安設定】設定 Secrets**：
    在 Streamlit 部署頁面的 **Advanced settings > Secrets**（或部署完成後的 **App settings > Secrets**）貼上以下內容：
