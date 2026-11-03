@@ -144,7 +144,7 @@ def render(api_key: str):
         st.warning("● 目前使用離線基準數據 (請於左側欄確認 FRED API Key)")
 
     # ==========================================
-    # 1. 雙矩陣：左右相反放置 (左: 貨幣政策與實體體溫 / 右: 美債借錢成本)，無滾動條全顯設計
+    # 1. 雙矩陣：原創原生 DataFrame 渲染 (左: 貨幣政策與實體體溫 / 右: 美債借錢成本)
     # ==========================================
     col_macro, col_rates = st.columns(2)
 
@@ -154,38 +154,39 @@ def render(api_key: str):
         st.caption("聯準會掌管利率的三大定海神針：央行基準利率、物價貴不貴、工作好不好找。")
 
         target_str = f"區間 {m['target_l']:.2f}%~{m['target_u']:.2f}%"
-        macro_rows = [
-            ("聯準會基準利率 (Fed 降息開關)", f"{m['dff_cur']:.2f}%", target_str, "#00cc96",
-             "全球借錢底標與央行開關，降息循環推進中"),
-            ("總體 CPI (百姓生活物價)", f"{m['cpi_cur']}%", f"{m['cpi_mom']}% (3M年化)", "#58a6ff",
-             "物價算聽話，通膨在可控範圍" if m['cpi_mom'] < 2.8 else "東西還在漲，通膨稍微黏滯"),
-            ("核心 PCE (Fed 降息標竿)", f"{m['pce_cur']}%", f"{m['pce_mom']}% (3M年化)", "#00cc96" if m['pce_mom'] <= 2.5 else "#ffaa00",
-             "通膨達標，官員較願意考慮降息" if m['pce_mom'] <= 2.5 else "通膨稍微偏頑固，不敢太快降息"),
-            ("失業率 (就業體溫計)", f"{m['unrate_cur']}%", f"{m['unrate_diff']:+.2f}% (月變動)", "#00cc96" if m['unrate_cur'] <= 4.0 else "#58a6ff",
-             "就業非常強，不怕失業" if m['unrate_cur'] <= 4.0 else ("就業很健康穩健" if m['unrate_cur'] <= 4.3 else "找工作開始變難了")),
-            ("VIX 恐慌指數 (股市心跳)", f"{m['vix_cur']}", f"{m['vix_diff']:+.2f} 點", "#00cc96" if m['vix_cur'] < 20 else "#ff4b4b",
-             "市場風平浪靜，適合穩健收租" if m['vix_cur'] < 20 else "市場大震盪，大家都在買保險避險")
+        macro_df_rows = [
+            {
+                "指標 (白話說明)": "聯準會基準利率 (Fed 降息開關)",
+                "最新數值": f"{m['dff_cur']:.2f}%",
+                "近期/目標": target_str,
+                "白話意義": "美國央行升降息總開關，決定全球借貸成本底標"
+            },
+            {
+                "指標 (白話說明)": "總體 CPI (百姓生活物價)",
+                "最新數值": f"{m['cpi_cur']}%",
+                "近期/目標": f"{m['cpi_mom']}% (3M年化)",
+                "白話意義": "物價算聽話，通膨在可控範圍" if m['cpi_mom'] < 2.8 else "東西還在漲，通膨稍微黏滯"
+            },
+            {
+                "指標 (白話說明)": "核心 PCE (Fed 降息標竿)",
+                "最新數值": f"{m['pce_cur']}%",
+                "近期/目標": f"{m['pce_mom']}% (3M年化)",
+                "白話意義": "通膨達標，官員較願意考慮降息" if m['pce_mom'] <= 2.5 else "通膨稍微偏頑固，不敢太快降息"
+            },
+            {
+                "指標 (白話說明)": "失業率 (就業體溫計)",
+                "最新數值": f"{m['unrate_cur']}%",
+                "近期/目標": f"{m['unrate_diff']:+.2f}% (月變動)",
+                "白話意義": "就業非常強，不怕失業" if m['unrate_cur'] <= 4.0 else ("就業很健康穩健" if m['unrate_cur'] <= 4.3 else "找工作開始變難了")
+            },
+            {
+                "指標 (白話說明)": "VIX 恐慌指數 (股市心跳)",
+                "最新數值": f"{m['vix_cur']}",
+                "近期/目標": f"{m['vix_diff']:+.2f} 點",
+                "白話意義": "市場風平浪靜，適合穩健收租" if m['vix_cur'] < 20 else "市場大震盪，大家都在買保險避險"
+            }
         ]
-
-        html_macro_table = """<table style="width:100%; border-collapse: collapse; font-size: 13px; text-align: left; background-color: #161922; border-radius: 8px; overflow: hidden; border: 1px solid #2d3139;">
-<thead>
-<tr style="background-color: #1f2430; color: #8b949e; border-bottom: 2px solid #2d3139;">
-<th style="padding: 10px 10px; width: 33%;">指標 (白話說明)</th>
-<th style="padding: 10px 8px; width: 19%; text-align: right;">最新數值</th>
-<th style="padding: 10px 8px; width: 20%; text-align: right;">近期/目標</th>
-<th style="padding: 10px 10px; width: 28%;">白話意義</th>
-</tr>
-</thead>
-<tbody>"""
-        for name, val, trend, color, meaning in macro_rows:
-            html_macro_table += f"""<tr style="border-bottom: 1px solid #232733;">
-<td style="padding: 10px 10px; font-weight: 600; color: #e6edf3;">{name}</td>
-<td style="padding: 10px 8px; text-align: right; font-family: monospace; font-size: 14px; font-weight: bold; color: {color};">{val}</td>
-<td style="padding: 10px 8px; text-align: right; font-family: monospace; color: #c9d1d9;">{trend}</td>
-<td style="padding: 10px 10px; color: #a0aec0; font-size: 12px; line-height: 1.4;">{meaning}</td>
-</tr>"""
-        html_macro_table += "</tbody></table>"
-        st.markdown(clean_html(html_macro_table), unsafe_allow_html=True)
+        st.dataframe(pd.DataFrame(macro_df_rows), use_container_width=True, hide_index=True)
 
     # ------------------ 右側：美債利率與借錢成本 ------------------
     with col_rates:
@@ -195,57 +196,52 @@ def render(api_key: str):
         spread_val = m["t10y2y_cur"]
         if spread_val < 0:
             curve_signal = "🚨 倒掛警報 (經濟可能要降溫)"
-            spread_color = "#ff4b4b"
         elif spread_val < 0.20:
             curve_signal = "⚡ 解除倒掛 (降息拐點，常伴隨波動)"
-            spread_color = "#ffaa00"
         else:
             curve_signal = "🟢 正常正斜率 (借長比利息高，經濟健康)"
-            spread_color = "#00cc96"
 
         tips_val = m["dfii10_cur"]
         if tips_val >= 2.0:
             tips_signal = "🛑 偏貴 (真借錢成本高，壓抑黃金科技股)"
-            tips_color = "#ff4b4b"
         elif tips_val >= 1.0:
             tips_signal = "⚖️ 適中 (中規中矩的實質利率)"
-            tips_color = "#ffaa00"
         else:
             tips_signal = "🚀 寬鬆便宜 (有利黃金與抗通膨資產)"
-            tips_color = "#00cc96"
 
-        rates_rows = [
-            ("10年期美債 (借錢底標基準)", f"{m['dgs10_cur']}%", f"{m['dgs10_diff']:+.2f}%", "#2aa198",
-             "全球資產借錢基準，越高則科技股壓力越大"),
-            ("2年期美債 (市場猜Fed)", f"{m['dgs2_cur']}%", f"{m['dgs2_diff']:+.2f}%", "#268bd2",
-             "市場猜測聯準會未來 1~2 年升降息走向"),
-            ("10Y-2Y 利差 (長短天期氣壓)", f"{m['t10y2y_cur']}%", f"{m['t10y2y_diff']:+.2f}%", spread_color,
-             curve_signal),
-            ("10年實質利率 (扣除通膨真成本)", f"{m['dfii10_cur']}%", f"{m['dfii10_diff']:+.2f}%", tips_color,
-             tips_signal),
-            ("高收益債違約利差 (企業倒閉率)", f"{m['hy_spread_cur']}%", f"{m['hy_spread_diff']:+.2f}%", "#00cc96" if m['hy_spread_cur'] < 4.0 else "#ff4b4b",
-             "企業信用良好不愁借錢" if m['hy_spread_cur'] < 4.0 else "企業借錢變難，市場開始警惕倒閉")
+        rates_df_rows = [
+            {
+                "美債/利率指標 (白話解讀)": "10年期美債 (借錢底標基準)",
+                "最新水準": f"{m['dgs10_cur']}%",
+                "今日變動": f"{m['dgs10_diff']:+.2f}%",
+                "白話意思": "全球資產借錢基準，越高則科技股壓力越大"
+            },
+            {
+                "美債/利率指標 (白話解讀)": "2年期美債 (市場猜Fed)",
+                "最新水準": f"{m['dgs2_cur']}%",
+                "今日變動": f"{m['dgs2_diff']:+.2f}%",
+                "白話意思": "市場猜測聯準會未來 1~2 年升降息走向"
+            },
+            {
+                "美債/利率指標 (白話解讀)": "10Y-2Y 利差 (長短天期氣壓)",
+                "最新水準": f"{m['t10y2y_cur']}%",
+                "今日變動": f"{m['t10y2y_diff']:+.2f}%",
+                "白話意思": curve_signal
+            },
+            {
+                "美債/利率指標 (白話解讀)": "10年實質利率 (扣除通膨真成本)",
+                "最新水準": f"{m['dfii10_cur']}%",
+                "今日變動": f"{m['dfii10_diff']:+.2f}%",
+                "白話意思": tips_signal
+            },
+            {
+                "美債/利率指標 (白話解讀)": "高收益債違約利差 (企業倒閉率)",
+                "最新水準": f"{m['hy_spread_cur']}%",
+                "今日變動": f"{m['hy_spread_diff']:+.2f}%",
+                "白話意思": "企業信用良好不愁借錢" if m['hy_spread_cur'] < 4.0 else "企業借錢變難，市場開始警惕倒閉"
+            }
         ]
-
-        html_rates_table = """<table style="width:100%; border-collapse: collapse; font-size: 13px; text-align: left; background-color: #161922; border-radius: 8px; overflow: hidden; border: 1px solid #2d3139;">
-<thead>
-<tr style="background-color: #1f2430; color: #8b949e; border-bottom: 2px solid #2d3139;">
-<th style="padding: 10px 10px; width: 33%;">美債/利率指標</th>
-<th style="padding: 10px 8px; width: 18%; text-align: right;">最新水準</th>
-<th style="padding: 10px 8px; width: 17%; text-align: right;">今日變動</th>
-<th style="padding: 10px 10px; width: 32%;">白話意思</th>
-</tr>
-</thead>
-<tbody>"""
-        for name, val, diff, color, meaning in rates_rows:
-            html_rates_table += f"""<tr style="border-bottom: 1px solid #232733;">
-<td style="padding: 9px 10px; font-weight: 600; color: #e6edf3;">{name}</td>
-<td style="padding: 9px 8px; text-align: right; font-family: monospace; font-size: 14px; font-weight: bold; color: {color};">{val}</td>
-<td style="padding: 9px 8px; text-align: right; font-family: monospace; color: #c9d1d9;">{diff}</td>
-<td style="padding: 9px 10px; color: #a0aec0; font-size: 12px; line-height: 1.4;">{meaning}</td>
-</tr>"""
-        html_rates_table += "</tbody></table>"
-        st.markdown(clean_html(html_rates_table), unsafe_allow_html=True)
+        st.dataframe(pd.DataFrame(rates_df_rows), use_container_width=True, hide_index=True)
 
     st.markdown("---")
 
@@ -256,7 +252,6 @@ def render(api_key: str):
     st.caption("嚴格遵循計量經濟學規範：結合芝加哥期貨市場真金白銀定價 (CME FedWatch)、泰勒法則客觀模型 (Taylor Rule) 與四大外資投行最新預測。")
 
     # 計量模型計算：泰勒法則 (Okun-Taylor 1993/1999 Reaction Function)
-    # i* = r* + pi + 0.5 * (pi - 2.0) - 1.0 * (u - 4.2)
     r_star = 1.0  # 紐約聯儲 Laubach-Williams 中性實質利率估計
     pi_cur = m['pce_cur']
     u_cur = m['unrate_cur']
@@ -266,131 +261,44 @@ def render(api_key: str):
 
     if rate_gap > 0.4:
         taylor_stance = "偏緊縮 (具充足降息空間)"
-        taylor_color = "#58a6ff"
     elif rate_gap < -0.4:
         taylor_stance = "偏寬鬆 (需警惕通膨反彈)"
-        taylor_color = "#ffaa00"
     else:
         taylor_stance = "處於中性合理區間"
-        taylor_color = "#00cc96"
 
     col_cme, col_taylor, col_banks = st.columns([1.0, 1.0, 1.3])
 
     # 1. CME FedWatch 期貨機率
     with col_cme:
-        cme_html = f"""<div style="background-color: #161922; border: 1px solid #2d3139; border-radius: 8px; padding: 14px; min-height: 250px;">
-<div style="font-weight: bold; color: #58a6ff; font-size: 14px; margin-bottom: 8px;">
-📊 期貨市場押注 (CME FedWatch)
-</div>
-<div style="font-size: 12px; color: #8b949e; margin-bottom: 12px;">芝加哥聯邦基金期貨真實資金定價：</div>
-<div style="margin-bottom: 8px;">
-<div style="display: flex; justify-content: space-between; font-size: 13px; color: #e6edf3; font-weight: 600;">
-<span>🟢 降息 1 碼 (25 bps)</span>
-<span style="color: #00cc96; font-family: monospace;">82.5%</span>
-</div>
-<div style="background: #212634; border-radius: 4px; height: 8px; width: 100%; margin-top: 4px; overflow: hidden;">
-<div style="background: #00cc96; width: 82.5%; height: 100%;"></div>
-</div>
-</div>
-<div style="margin-bottom: 8px;">
-<div style="display: flex; justify-content: space-between; font-size: 13px; color: #e6edf3;">
-<span>🟡 按兵不動 (0 bps)</span>
-<span style="color: #ffaa00; font-family: monospace;">17.5%</span>
-</div>
-<div style="background: #212634; border-radius: 4px; height: 8px; width: 100%; margin-top: 4px; overflow: hidden;">
-<div style="background: #ffaa00; width: 17.5%; height: 100%;"></div>
-</div>
-</div>
-<div style="margin-bottom: 10px;">
-<div style="display: flex; justify-content: space-between; font-size: 13px; color: #8b949e;">
-<span>⚪ 升息 (25 bps)</span>
-<span style="font-family: monospace;">0.0%</span>
-</div>
-<div style="background: #212634; border-radius: 4px; height: 8px; width: 100%; margin-top: 4px; overflow: hidden;">
-<div style="background: #58a6ff; width: 0%; height: 100%;"></div>
-</div>
-</div>
-<div style="font-size: 11px; color: #a0aec0; line-height: 1.4; border-top: 1px solid #232733; padding-top: 8px;">
-【白話總結】市場超過 8 成資金真金白銀賭下次降息 1 碼，借貸成本大概率繼續走低。
-</div>
-</div>"""
-        st.markdown(clean_html(cme_html), unsafe_allow_html=True)
+        st.markdown("##### 📊 期貨市場押注 (CME FedWatch)")
+        st.caption("芝加哥聯邦基金期貨真實資金定價：")
+        st.progress(0.825, text="🟢 降息 1 碼 (25 bps)：82.5%")
+        st.progress(0.175, text="🟡 按兵不動 (0 bps)：17.5%")
+        st.progress(0.00, text="⚪ 升息 (25 bps)：0.0%")
+        st.info("💡 **白話總結**：市場逾 8 成資金真金白銀押注下次降息 1 碼，借貸成本大概率繼續走低。")
 
     # 2. 泰勒法則計量模型
     with col_taylor:
-        taylor_html = f"""<div style="background-color: #161922; border: 1px solid #2d3139; border-radius: 8px; padding: 14px; min-height: 250px;">
-<div style="font-weight: bold; color: #58a6ff; font-size: 14px; margin-bottom: 8px;">
-📐 計量客觀基準 (泰勒法則模型)
-</div>
-<div style="font-size: 12px; color: #8b949e; margin-bottom: 10px;">根據通膨缺口與失業率缺口之學理計算：</div>
-<div style="display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #232733;">
-<span style="color: #8b949e;">模型理論利率 ($i^*$)</span>
-<span style="color: #58a6ff; font-weight: bold; font-family: monospace;">{taylor_rate:.2f}%</span>
-</div>
-<div style="display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #232733;">
-<span style="color: #8b949e;">現行基準利率</span>
-<span style="color: #e6edf3; font-weight: bold; font-family: monospace;">{current_eff_rate:.2f}%</span>
-</div>
-<div style="display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #232733;">
-<span style="color: #8b949e;">實質利率偏離值</span>
-<span style="color: {taylor_color}; font-weight: bold; font-family: monospace;">{rate_gap:+.2f}%</span>
-</div>
-<div style="font-size: 12px; color: {taylor_color}; font-weight: bold; margin-top: 8px;">
-政策姿態：{taylor_stance}
-</div>
-<div style="font-size: 11px; color: #a0aec0; line-height: 1.4; border-top: 1px solid #232733; padding-top: 8px; margin-top: 6px;">
-【白話總結】數學模型推導合理利率在 {taylor_rate:.1f}% 左右。現行利率已很接近中性水位，聯準會可穩健慢慢降，不用慌忙大幅降息。
-</div>
-</div>"""
-        st.markdown(clean_html(taylor_html), unsafe_allow_html=True)
+        st.markdown("##### 📐 計量客觀基準 (泰勒法則)")
+        st.caption("Okun-Taylor 反應函數理論計算：")
+        c1, c2 = st.columns(2)
+        c1.metric("模型理論利率 (i*)", f"{taylor_rate:.2f}%")
+        c2.metric("現行基準利率", f"{current_eff_rate:.2f}%", f"偏離 {rate_gap:+.2f}%")
+        st.markdown(f"**政策姿態評估**：`{taylor_stance}`")
+        st.info(f"💡 **白話總結**：數學模型推導合理利率在 {taylor_rate:.1f}% 左右。現行利率已很接近中性水位，聯準會無需慌忙大幅降息。")
 
     # 3. 華爾街四大投行共識
     with col_banks:
-        banks_html = """<div style="background-color: #161922; border: 1px solid #2d3139; border-radius: 8px; padding: 14px; min-height: 250px;">
-<div style="font-weight: bold; color: #58a6ff; font-size: 14px; margin-bottom: 8px;">
-🏦 華爾街四大投行最新共識矩陣
-</div>
-<table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #e6edf3; margin-bottom: 8px;">
-<thead>
-<tr style="color: #8b949e; border-bottom: 1px solid #2d3139; text-align: left;">
-<th style="padding: 4px 2px;">投行機構</th>
-<th style="padding: 4px 2px;">下次預測</th>
-<th style="padding: 4px 2px;">終點利率</th>
-<th style="padding: 4px 2px;">核心觀點</th>
-</tr>
-</thead>
-<tbody>
-<tr style="border-bottom: 1px solid #232733;">
-<td style="padding: 6px 2px; font-weight: 600; color: #58a6ff;">高盛 (GS)</td>
-<td style="padding: 6px 2px; color: #00cc96; font-weight: bold;">降 1 碼</td>
-<td style="padding: 6px 2px; font-family: monospace;">3.25%~3.5%</td>
-<td style="padding: 6px 2px; color: #a0aec0;">勞動市場漸進降溫，預防性調降</td>
-</tr>
-<tr style="border-bottom: 1px solid #232733;">
-<td style="padding: 6px 2px; font-weight: 600; color: #58a6ff;">小摩 (JPM)</td>
-<td style="padding: 6px 2px; color: #00cc96; font-weight: bold;">降 1 碼</td>
-<td style="padding: 6px 2px; font-family: monospace;">3.00%~3.25%</td>
-<td style="padding: 6px 2px; color: #a0aec0;">防範就業過度冷卻，通膨在軌道上</td>
-</tr>
-<tr style="border-bottom: 1px solid #232733;">
-<td style="padding: 6px 2px; font-weight: 600; color: #58a6ff;">大摩 (MS)</td>
-<td style="padding: 6px 2px; color: #00cc96; font-weight: bold;">降 1 碼</td>
-<td style="padding: 6px 2px; font-family: monospace;">3.50%</td>
-<td style="padding: 6px 2px; color: #a0aec0;">軟著陸基本成形，貨幣政策轉中性</td>
-</tr>
-<tr>
-<td style="padding: 6px 2px; font-weight: 600; color: #58a6ff;">瑞銀 (UBS)</td>
-<td style="padding: 6px 2px; color: #00cc96; font-weight: bold;">降 1 碼</td>
-<td style="padding: 6px 2px; font-family: monospace;">3.00%</td>
-<td style="padding: 6px 2px; color: #a0aec0;">降息週期確立，有利中天期債券配置</td>
-</tr>
-</tbody>
-</table>
-<div style="font-size: 11px; color: #a0aec0; line-height: 1.4; border-top: 1px solid #232733; padding-top: 6px;">
-【白話總結】四大投行 100% 一致預期下次「降息 1 碼」！目前關鍵分歧僅在於這波降息總共會降到 3.0% 還是 3.5%。
-</div>
-</div>"""
-        st.markdown(clean_html(banks_html), unsafe_allow_html=True)
+        st.markdown("##### 🏦 華爾街四大投行最新共識矩陣")
+        st.caption("高盛、小摩、大摩、瑞銀研報共識：")
+        banks_df = pd.DataFrame([
+            {"投行機構": "高盛 (GS)", "下次預測": "降 1 碼 (-25bp)", "終點利率": "3.25%~3.50%", "核心觀點": "勞動漸進降溫，預防性調降"},
+            {"投行機構": "小摩 (JPM)", "下次預測": "降 1 碼 (-25bp)", "終點利率": "3.00%~3.25%", "核心觀點": "防範就業過度冷卻，通膨在軌道上"},
+            {"投行機構": "大摩 (MS)", "下次預測": "降 1 碼 (-25bp)", "終點利率": "3.50%", "核心觀點": "軟著陸基本成形，貨幣轉中性"},
+            {"投行機構": "瑞銀 (UBS)", "下次預測": "降 1 碼 (-25bp)", "終點利率": "3.00%", "核心觀點": "降息週期確立，有利中天期債券配置"}
+        ])
+        st.dataframe(banks_df, use_container_width=True, hide_index=True)
+        st.info("💡 **白話總結**：四大投行 100% 一致預期下次「降息 1 碼」！目前關鍵分歧在終點利率會降到 3.0% 還是 3.5%。")
 
     st.markdown("---")
 
