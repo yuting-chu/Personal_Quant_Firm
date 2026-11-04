@@ -4,6 +4,26 @@
 
 ---
 
+## [1.4.0] - 2026-11-05
+
+### 🤖 里程碑：第二階段自動化投研派送引擎與歷史資料庫存檔系統正式上線
+
+#### 新增與優化 (Added & Enhanced)
+- **SQLite 歷史宏觀研報存檔架構 (`modules/database.py`)**：
+  - 新增 `macro_daily_reports` 結構化資料庫表，支援每日晨報、夕報與即時投研的永久歸檔。
+  - 實作 `save_macro_report`、`get_macro_reports` 與 `get_macro_report_by_id` 存取介面，保存指標快照與完整 Markdown 內文。
+- **後台自動化定時宏觀派送引擎 (`scripts/macro_dispatcher.py`)**：
+  - 建立獨立 CLI 與定時排程引擎，支援以指令 `python scripts/macro_dispatcher.py --type morning/evening` 背景執行。
+  - 自動完成跨市場指標抓取、Gemini AI 投研推理及 SQLite 結構化入庫，相容 Windows 工作排程器與 Cron。
+- **前端歷史研報存檔翻閱器 (`views/tab_macro.py`)**：
+  - 新增「📚 歷史每日宏觀投研存檔庫」區塊，支援下拉選單隨時調閱過去 30 篇宏觀研報。
+  - 在生成研報時提供「🌅 生成並歸檔【晨間全球宏觀速遞】」一鍵按鈕，生成後自動永久歸檔。
+- **AI 模型升級與錯誤修復**：
+  - 全面將已棄用之 `gemini-1.5-flash` 升級為新一代 `gemini-3.5-flash`（並具備 `gemini-flash-latest` 自動容錯機制）。
+  - 修復 Windows 終端環境下 Unicode/Emoji 編碼異常。
+
+---
+
 ## [1.3.0] - 2026-11-04
 
 ### 🌊 里程碑：第一階段宏觀量化指標庫全面擴充（淨流動性水庫、薩姆規則、動態股債相關性與全球央行 Carry）

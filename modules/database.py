@@ -23,6 +23,17 @@ def init_db():
             audit_status TEXT
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS macro_daily_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            report_type TEXT,
+            title TEXT,
+            summary TEXT,
+            content_markdown TEXT,
+            metrics_snapshot TEXT
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -63,6 +74,58 @@ def get_cumulative_realized_pnl():
     df = pd.read_sql_query("SELECT pnl FROM trade_logs", conn)
     conn.close()
     return float(df['pnl'].sum()) if not df.empty else 0.0
+
+
+def save_macro_report(report_type: str, title: str, summary: str, content_markdown: str, metrics_snapshot: str = "") -> int:
+    """
+    保存每日宏觀研報（晨報/夕報/即時投研）至 SQLite 歷史資料庫。
+    """
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute('''
+        INSERT INTO macro_daily_reports (timestamp, report_type, title, summary, content_markdown, metrics_snapshot)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (now_str, report_type, title, summary, content_markdown, metrics_snapshot))
+    report_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return report_id
+
+
+def get_macro_reports(limit: int = 30) -> pd.DataFrame:
+    """
+    讀取歷史宏觀研報列表，按時間降冪排序。
+    """
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query(
+        "SELECT id, timestamp, report_type, title, summary, content_markdown, metrics_snapshot FROM macro_daily_reports ORDER BY timestamp DESC LIMIT ?",
+        conn, params=(limit,)
+    )
+    conn.close()
+    return df
+
+
+def get_macro_report_by_id(report_id: int):
+    """
+    依 ID 取得單筆宏觀研報詳情。
+    """
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, timestamp, report_type, title, summary, content_markdown, metrics_snapshot FROM macro_daily_reports WHERE id = ?", (report_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {
+            "id": row[0],
+            "timestamp": row[1],
+            "report_type": row[2],
+            "title": row[3],
+            "summary": row[4],
+            "content_markdown": row[5],
+            "metrics_snapshot": row[6]
+        }
+    return None
 
 
 init_db()

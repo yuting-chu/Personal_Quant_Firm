@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 import google.generativeai as genai
 from modules.news_fetcher import fetch_yahoo_finance_news
+from modules.database import save_macro_report, get_macro_reports
 
 
 def clean_html(html_str: str) -> str:
@@ -596,21 +597,37 @@ def render(api_key: str):
     st.markdown("---")
 
     # ==========================================
-    # 8. 首席宏觀策略官 (Gemini AI 深入研報生成)
+    # 8. 首席宏觀策略官 (AI 深入研報生成與自動歸檔)
     # ==========================================
-    st.markdown("#### 🤖 首席宏觀策略官 (AI 深入研報生成)")
-    st.caption("研報將保持華爾街投行級的嚴謹計量術語，同時在每個核心結論後附上白話解讀。")
-    if st.button("🚀 產出機構級深度研究報告", key="btn_macro_ai_upgrade"):
+    st.markdown("#### 🤖 首席宏觀策略官 (AI 深入研報生成與自動歸檔)")
+    st.caption("研報將保持華爾街投行級的嚴謹計量術語，同時在每個核心結論後附上白話解讀，並自動同步歸檔至歷史資料庫。")
+
+    col_btn1, col_btn2 = st.columns([1, 1])
+
+    with col_btn1:
+        run_ondemand = st.button("🚀 產出機構級即時投研報告", key="btn_macro_ai_upgrade")
+    with col_btn2:
+        run_morning = st.button("🌅 生成並歸檔今日【晨間宏觀速遞】", key="btn_macro_morning_dispatch")
+
+    if run_ondemand or run_morning:
         if not api_key:
             st.error("請在側邊欄設定 Gemini API Key！")
         else:
-            with st.spinner("首席宏觀策略官正在整合聯邦基金利率、淨流動性模型、薩姆規則、投行共識與跨市場流動性..."):
+            rep_type_flag = "MORNING_MACRO" if run_morning else "ON_DEMAND"
+            rep_type_desc = "晨間全球宏觀速遞 (Morning Macro Brief)" if run_morning else "首席宏觀即時投研評估"
+
+            with st.spinner(f"首席宏觀策略官正在整合聯邦基金利率、淨流動性、薩姆規則與跨市場流動性，編撰【{rep_type_desc}】..."):
                 try:
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    try:
+                        model = genai.GenerativeModel('gemini-3.5-flash')
+                    except Exception:
+                        model = genai.GenerativeModel('gemini-flash-latest')
                     prompt = f"""
                     你是一位華爾街頂級全球宏觀對衝基金的 Chief Global Macro Strategist（首席全球宏觀策略官兼計量經濟學家）。
-                    請根據以下即時數據進行深度跨資產研報分析：
+                    請針對今日【{rep_type_desc}】進行深度跨資產研報分析：
+
+                    【底層即時宏觀指標快照】：
                     - 聯準會有效基準利率 (DFF)：{m['dff_cur']:.2f}% (目標區間 {m['target_l']:.2f}% ~ {m['target_u']:.2f}%)
                     - 計量泰勒法則推薦利率 (Taylor Rule Rate)：{taylor_rate:.2f}% (利率偏離值 {rate_gap:+.2f}%, 姿態: {taylor_stance})
                     - CME FedWatch 期貨預測：下次會議降息 1 碼機率 82.5%, 按兵不動 17.5%
@@ -641,13 +658,67 @@ def render(api_key: str):
                     """
                     res = model.generate_content(prompt)
                     st.info(res.text)
+
+                    # 自動結構化歸檔至 SQLite 資料庫
+                    rep_title = f"{datetime.now().strftime('%Y-%m-%d %H:%M')} {rep_type_desc}"
+                    rep_summary = f"淨流動性 ${m['net_liq']:.2f}T | 基準利率 {m['dff_cur']:.2f}% | 薩姆規則 {m['sahm_val']:.2f}% | 股債相關 {m['stock_bond_corr']:+.2f}"
+                    metrics_snapshot_str = json.dumps(m, ensure_ascii=False)
+
+                    try:
+                        save_macro_report(
+                            report_type=rep_type_flag,
+                            title=rep_title,
+                            summary=rep_summary,
+                            content_markdown=res.text,
+                            metrics_snapshot=metrics_snapshot_str
+                        )
+                        st.success(f"✅ 研報已成功歸檔至本地 SQLite 歷史資料庫（標題：{rep_title}）")
+                    except Exception as save_err:
+                        st.warning(f"研報生成成功，但資料庫歸檔失敗: {save_err}")
+
                 except Exception as e:
                     st.error(f"連線失敗: {e}")
 
     st.markdown("---")
 
     # ==========================================
-    # 9. Yahoo Finance 全球即時財經頭條
+    # 9. 📚 歷史每日宏觀投研存檔庫 (Historical Macro Research Archive)
+    # ==========================================
+    st.markdown("#### 📚 歷史每日宏觀投研存檔庫")
+    st.caption("所有由 AI 首席宏觀策略官或定時排程引擎 (Macro Dispatcher) 生成的歷史投研紀錄，皆自動歸檔於本地 SQLite。")
+
+    try:
+        df_reports = get_macro_reports(limit=30)
+    except Exception:
+        df_reports = pd.DataFrame()
+
+    if df_reports.empty:
+        st.info("💡 目前歷史資料庫尚無研報存檔。點擊上方按鈕產出報告後，系統將自動永久歸檔供日後覆盤。")
+    else:
+        c_meta1, c_meta2 = st.columns([1, 2])
+        c_meta1.metric("歷史歸檔總數", f"{len(df_reports)} 篇")
+        c_meta2.metric("最新歸檔時間", f"{df_reports['timestamp'].iloc[0]}")
+
+        report_options = [
+            f"[{row['timestamp']}] {row['title']} ({row['report_type']})"
+            for _, row in df_reports.iterrows()
+        ]
+        selected_idx = st.selectbox(
+            "📂 選擇要查閱的歷史投研報告：",
+            range(len(report_options)),
+            format_func=lambda i: report_options[i],
+            key="select_macro_history"
+        )
+        selected_row = df_reports.iloc[selected_idx]
+
+        st.markdown(f"**📌 摘要快照**：`{selected_row['summary']}`")
+        with st.expander(f"📖 展開閱讀完整研報：{selected_row['title']}", expanded=True):
+            st.markdown(selected_row['content_markdown'])
+
+    st.markdown("---")
+
+    # ==========================================
+    # 10. Yahoo Finance 全球即時財經頭條
     # ==========================================
     st.markdown("#### 📰 即時全球財經頭條")
     news_list = fetch_yahoo_finance_news()
