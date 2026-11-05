@@ -4,6 +4,7 @@ import yfinance as yf
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import google.generativeai as genai
+from modules.ai_engine import generate_content_with_fallback
 from modules.news_fetcher import fetch_yahoo_finance_news
 
 def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, est_margin_used: float = 285000):
@@ -122,10 +123,8 @@ def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, e
             else:
                 with st.spinner("CRO 正在推演黑天鵝模型..."):
                     try:
-                        genai.configure(api_key=api_key)
-                        model = genai.GenerativeModel('gemini-3.6-flash')
                         prompt = f"身為 CRO，針對本金 ${total_capital:,.0f} USD，保證金率 {actual_margin_ratio:.1f}%，請推演 2 個潛在黑天鵝事件與具體對衝指令。"
-                        res = model.generate_content(prompt)
-                        st.info(res.text)
+                        report_text = generate_content_with_fallback(api_key, prompt)
+                        st.info(report_text)
                     except Exception as e:
                         st.error(f"連線失敗: {e}")

@@ -9,6 +9,7 @@ from datetime import datetime
 import google.generativeai as genai
 from modules.news_fetcher import fetch_yahoo_finance_news
 from modules.database import save_macro_report, get_macro_reports
+from modules.ai_engine import generate_content_with_fallback
 
 
 def clean_html(html_str: str) -> str:
@@ -618,11 +619,6 @@ def render(api_key: str):
 
             with st.spinner(f"首席宏觀策略官正在整合聯邦基金利率、淨流動性、薩姆規則與跨市場流動性，編撰【{rep_type_desc}】..."):
                 try:
-                    genai.configure(api_key=api_key)
-                    try:
-                        model = genai.GenerativeModel('gemini-3.5-flash')
-                    except Exception:
-                        model = genai.GenerativeModel('gemini-flash-latest')
                     prompt = f"""
                     你是一位華爾街頂級全球宏觀對衝基金的 Chief Global Macro Strategist（首席全球宏觀策略官兼計量經濟學家）。
                     請針對今日【{rep_type_desc}】進行深度跨資產研報分析：
@@ -656,8 +652,8 @@ def render(api_key: str):
                     2. **重點要求**：在每個章節或核心推論結尾，務必用【白話大白話總結】附上一句大眾能懂的白話解讀，說明這對投資人錢包到底有何影響。
                     3. 內容需包含跨資產（美股、美債、外匯 Carry、黃金原油）的具體配置百分比建議。
                     """
-                    res = model.generate_content(prompt)
-                    st.info(res.text)
+                    report_text = generate_content_with_fallback(api_key, prompt)
+                    st.info(report_text)
 
                     # 自動結構化歸檔至 SQLite 資料庫
                     rep_title = f"{datetime.now().strftime('%Y-%m-%d %H:%M')} {rep_type_desc}"
@@ -669,7 +665,7 @@ def render(api_key: str):
                             report_type=rep_type_flag,
                             title=rep_title,
                             summary=rep_summary,
-                            content_markdown=res.text,
+                            content_markdown=report_text,
                             metrics_snapshot=metrics_snapshot_str
                         )
                         st.success(f"✅ 研報已成功歸檔至本地 SQLite 歷史資料庫（標題：{rep_title}）")

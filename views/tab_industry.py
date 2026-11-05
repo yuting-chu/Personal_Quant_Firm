@@ -4,6 +4,7 @@ import yfinance as yf
 import plotly.express as px
 import google.generativeai as genai
 from modules.tradingview import render_tv_chart
+from modules.ai_engine import generate_content_with_fallback
 
 SECTOR_ETFS = {
     "XLK": "資訊科技 (Technology)",
@@ -175,8 +176,6 @@ def render(api_key: str):
         else:
             with st.spinner("跨資產研究員正在分析宏觀匯率、商品成本與個股定價鏈..."):
                 try:
-                    genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-3.6-flash')
                     prompt = f"""
                     你是一位頂級對衝基金的 Senior Cross-Asset Equity Researcher。
                     請針對以下產業鏈進行深度傳導分析：
@@ -189,7 +188,7 @@ def render(api_key: str):
                     1. 【成本與匯率傳導機制】：上游大宗/匯率如何直接衝擊中下游毛利或定價權。
                     2. 【跨市場套利與對衝策略】：如何結合現貨與選擇權建立高凸性或風險對衝倉位。
                     """
-                    res = model.generate_content(prompt)
-                    st.info(res.text)
+                    report_text = generate_content_with_fallback(api_key, prompt)
+                    st.info(report_text)
                 except Exception as e:
                     st.error(f"連線失敗: {e}")

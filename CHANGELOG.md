@@ -4,6 +4,24 @@
 
 ---
 
+## [1.4.1] - 2026-11-06
+
+### 🛡️ 全域高可用：AI 推理引擎 (AI Engine) 模組化與多模型自動容錯切換 (Auto-Failover)
+
+#### 修復與架構升級 (Fixed & Architectural Upgrade)
+- **獨立建立全域 AI 備援引擎 (`modules/ai_engine.py`)**：
+  - 封裝 `generate_content_with_fallback(api_key, prompt)` 統一調用介面。
+  - 實作智慧容錯優先權佇列：`gemini-3.5-flash` ➔ `gemini-flash-latest` ➔ `gemini-3.6-flash` ➔ `gemini-pro-latest`。
+  - 徹底根絕 Google API 因個別模型停用（如 `404 models/gemini-1.5-flash is not found`）或配額觸頂（429）導致前端中斷的隱患。
+- **全系統各業務視圖全面導入**：
+  - `views/tab_macro.py`：首席宏觀策略官研報生成全面接入。
+  - `scripts/macro_dispatcher.py`：後台自動化派送腳本全面接入。
+  - `views/tab_industry.py`：產業鏈跨資產傳導推演全面接入。
+  - `views/tab_risk.py`：CRO 動態黑天鵝壓力測試全面接入。
+  - `views/tab_audit.py`：IC 投資委員會週報合成全面接入。
+
+---
+
 ## [1.4.0] - 2026-11-05
 
 ### 🤖 里程碑：第二階段自動化投研派送引擎與歷史資料庫存檔系統正式上線

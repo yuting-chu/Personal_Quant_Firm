@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import plotly.express as px
 import google.generativeai as genai
+from modules.ai_engine import generate_content_with_fallback
 from modules.database import get_trade_logs, insert_trade_log
 
 def render(total_capital: float, api_key: str):
@@ -68,8 +69,6 @@ def render(total_capital: float, api_key: str):
         else:
             with st.spinner(f"AI 量化投研團隊正在合成【{report_type}】..."):
                 try:
-                    genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-3.6-flash')
                     
                     if "總經" in report_type:
                         prompt = f"""
@@ -102,9 +101,9 @@ def render(total_capital: float, api_key: str):
                           3. 【具體交易執行指令】：履約價 (Strike)、到期日 (DTE) 與停損條件建議。
                         """
                     
-                    res = model.generate_content(prompt)
+                    report_text = generate_content_with_fallback(api_key, prompt)
                     st.success(f"✅ 【{report_type}】產出完畢")
-                    st.markdown(res.text)
+                    st.markdown(report_text)
                     
                 except Exception as e:
                     st.error(f"報告生成失敗: {e}")

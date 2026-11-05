@@ -42,6 +42,7 @@ for _mod in ["streamlit", "plotly", "plotly.graph_objects"]:
 
 from modules.database import save_macro_report
 from views.tab_macro import fetch_macro_matrix
+from modules.ai_engine import generate_content_with_fallback
 import google.generativeai as genai
 
 
@@ -117,13 +118,7 @@ def run_dispatcher(report_type: str = "morning", custom_gemini_key: str = None, 
     # 3. 呼叫 Gemini AI
     print("[INFO] 正在呼叫 Gemini AI 旗艦模型生成機構級深度研報...")
     try:
-        genai.configure(api_key=gemini_key)
-        try:
-            model = genai.GenerativeModel("gemini-3.5-flash")
-        except Exception:
-            model = genai.GenerativeModel("gemini-flash-latest")
-        response = model.generate_content(prompt)
-        report_markdown = response.text
+        report_markdown = generate_content_with_fallback(gemini_key, prompt)
         print(f"[SUCCESS] 研報生成完成！長度: {len(report_markdown)} 字元")
     except Exception as e:
         print(f"[ERROR] AI 生成失敗: {e}")
