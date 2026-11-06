@@ -4,6 +4,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 from modules.database import get_trade_logs, get_today_realized_pnl
 
+import importlib
+import modules.ai_engine
 from views import (
     tab_macro,
     tab_industry,
@@ -11,6 +13,14 @@ from views import (
     tab_risk,
     tab_audit
 )
+
+# 強制動態熱重載 (Hot-Reloading)，確保磁碟上的最新 AI 模型與指標邏輯即時生效，不被 Python 記憶體快取鎖定
+importlib.reload(modules.ai_engine)
+importlib.reload(tab_macro)
+importlib.reload(tab_industry)
+importlib.reload(tab_backtest)
+importlib.reload(tab_risk)
+importlib.reload(tab_audit)
 
 load_dotenv()
 

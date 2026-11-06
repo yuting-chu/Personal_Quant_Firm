@@ -11,8 +11,11 @@
 #### 修復與架構升級 (Fixed & Architectural Upgrade)
 - **獨立建立全域 AI 備援引擎 (`modules/ai_engine.py`)**：
   - 封裝 `generate_content_with_fallback(api_key, prompt)` 統一調用介面。
-  - 實作智慧容錯優先權佇列：`gemini-3.5-flash` ➔ `gemini-flash-latest` ➔ `gemini-3.6-flash` ➔ `gemini-pro-latest`。
+  - 嚴格依照指定優先順序佇列：`gemini-flash-latest` ➔ `gemini-3.6-flash` ➔ `gemini-pro-latest`（備用：`gemini-3.5-flash`）。
+  - 導入單一模型請求逾時防護機制（Timeout Auto-Failover），若節點掛起自動切換下一模型。
   - 徹底根絕 Google API 因個別模型停用（如 `404 models/gemini-1.5-flash is not found`）或配額觸頂（429）導致前端中斷的隱患。
+- **Streamlit 全域視圖強制熱重載機制 (`app.py`)**：
+  - 注入 `importlib.reload` 動態熱重載機制，強制每次運行刷新 `views` 與 `modules` 記憶體空間，杜絕 Python `sys.modules` 快取造成舊程式碼殘留問題。
 - **全系統各業務視圖全面導入**：
   - `views/tab_macro.py`：首席宏觀策略官研報生成全面接入。
   - `scripts/macro_dispatcher.py`：後台自動化派送腳本全面接入。
