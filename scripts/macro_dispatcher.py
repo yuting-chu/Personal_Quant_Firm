@@ -41,6 +41,7 @@ for _mod in ["streamlit", "plotly", "plotly.graph_objects"]:
             sys.modules[_mod] = mock.MagicMock()
 
 from modules.database import save_macro_report
+from modules.time_utils import now_taipei, get_dual_clock_str
 from views.tab_macro import fetch_macro_matrix
 from modules.ai_engine import generate_content_with_fallback
 import google.generativeai as genai
@@ -62,7 +63,8 @@ def load_env_file(filepath):
 def run_dispatcher(report_type: str = "morning", custom_gemini_key: str = None, custom_fred_key: str = None):
     print("=" * 65)
     print(f"[START] Macro Dispatcher 啟動宏觀投研自動化流程 ({report_type.upper()})")
-    print(f"[TIME]  執行時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    tpe_now, nyc_now = get_dual_clock_str()
+    print(f"[TIME]  執行時間: {tpe_now} (台北) | {nyc_now}")
     print("=" * 65)
 
     # 讀取金鑰
@@ -125,7 +127,7 @@ def run_dispatcher(report_type: str = "morning", custom_gemini_key: str = None, 
         return False
 
     # 4. 儲存至 SQLite 資料庫
-    report_title = f"{datetime.now().strftime('%Y-%m-%d')} {type_title}"
+    report_title = f"{now_taipei().strftime('%Y-%m-%d')} {type_title}"
     summary_text = f"淨流動性 ${m['net_liq']:.2f}T | 基準利率 {m['dff_cur']:.2f}% | 薩姆指標 {m['sahm_val']:.2f}% | 股債相關 {m['stock_bond_corr']:+.2f}"
     metrics_json = json.dumps(m, ensure_ascii=False)
 

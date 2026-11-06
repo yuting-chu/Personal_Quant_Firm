@@ -6,6 +6,8 @@ from modules.database import get_trade_logs, get_today_realized_pnl
 
 import importlib
 import modules.ai_engine
+import modules.time_utils
+from modules.time_utils import get_dual_clock_str
 from views import (
     tab_macro,
     tab_industry,
@@ -16,6 +18,7 @@ from views import (
 
 # 強制動態熱重載 (Hot-Reloading)，確保磁碟上的最新 AI 模型與指標邏輯即時生效，不被 Python 記憶體快取鎖定
 importlib.reload(modules.ai_engine)
+importlib.reload(modules.time_utils)
 importlib.reload(tab_macro)
 importlib.reload(tab_industry)
 importlib.reload(tab_backtest)
@@ -147,7 +150,16 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    st.caption(f"系統時鐘: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    tpe_clock, nyc_clock = get_dual_clock_str()
+    st.markdown(
+        f'''
+        <div style="font-size: 11px; color: #a0aec0; background-color: #1a1d24; padding: 10px; border-radius: 6px; border: 1px solid #2d3748; line-height: 1.6;">
+            <div>🇹🇼 <b>台北時間 (HQ)</b>:<br><code style="color: #63b3ed;">{tpe_clock}</code></div>
+            <div style="margin-top: 6px;">🇺🇸 <b>美東時間 (ET)</b>:<br><code style="color: #ecc94b;">{nyc_clock}</code></div>
+        </div>
+        ''',
+        unsafe_allow_html=True
+    )
 
 # ==========================================
 # 3. 頂部動態資產戰情看板與回撤熔斷檢查

@@ -2,6 +2,7 @@ import sqlite3
 import os
 import pandas as pd
 from datetime import datetime
+from modules.time_utils import get_taipei_timestamp, get_taipei_datestr
 
 # 改用絕對路徑：避免從不同工作目錄啟動 streamlit 時，
 # 相對路徑 "quant_firm.db" 指向不同資料夾，變成每次都生成新的空資料庫。
@@ -44,7 +45,7 @@ def insert_trade_log(symbol, action, pnl, strategy_type, reason, audit_status):
     c.execute('''
         INSERT INTO trade_logs (timestamp, symbol, action, pnl, strategy_type, reason, audit_status)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol, action, pnl, strategy_type, reason, audit_status))
+    ''', (get_taipei_timestamp(), symbol, action, pnl, strategy_type, reason, audit_status))
     conn.commit()
     conn.close()
 
@@ -59,7 +60,7 @@ def get_trade_logs():
 def get_today_realized_pnl():
     """今日（本機日期）所有交易紀錄的已實現損益加總，用於單日回撤熔斷計算。"""
     conn = sqlite3.connect(DB_PATH)
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    today_str = get_taipei_datestr()
     df = pd.read_sql_query(
         "SELECT pnl FROM trade_logs WHERE timestamp LIKE ?",
         conn, params=(f"{today_str}%",)
@@ -82,7 +83,7 @@ def save_macro_report(report_type: str, title: str, summary: str, content_markdo
     """
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_str = get_taipei_timestamp()
     c.execute('''
         INSERT INTO macro_daily_reports (timestamp, report_type, title, summary, content_markdown, metrics_snapshot)
         VALUES (?, ?, ?, ?, ?, ?)

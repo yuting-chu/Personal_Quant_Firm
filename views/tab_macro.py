@@ -9,6 +9,7 @@ from datetime import datetime
 import google.generativeai as genai
 from modules.news_fetcher import fetch_yahoo_finance_news
 from modules.database import save_macro_report, get_macro_reports
+from modules.time_utils import now_taipei, get_taipei_datestr
 from modules.ai_engine import generate_content_with_fallback
 
 
@@ -145,7 +146,7 @@ def fetch_macro_matrix(fred_api_key: str):
             "net_liq": 5.741, "net_liq_diff": -0.056,
             "walcl_t": 6.746, "wtregen_t": 1.000, "rrp_t": 0.005,
             "sahm_val": 0.00,
-            "rates_date": datetime.now().strftime("%Y-%m-%d")
+            "rates_date": get_taipei_datestr()
         }
 
     # 6. CBOE VIX 恐慌指數
@@ -656,7 +657,7 @@ def render(api_key: str):
                     st.info(report_text)
 
                     # 自動結構化歸檔至 SQLite 資料庫
-                    rep_title = f"{datetime.now().strftime('%Y-%m-%d %H:%M')} {rep_type_desc}"
+                    rep_title = f"{now_taipei().strftime('%Y-%m-%d %H:%M')} (台北) {rep_type_desc}"
                     rep_summary = f"淨流動性 ${m['net_liq']:.2f}T | 基準利率 {m['dff_cur']:.2f}% | 薩姆規則 {m['sahm_val']:.2f}% | 股債相關 {m['stock_bond_corr']:+.2f}"
                     metrics_snapshot_str = json.dumps(m, ensure_ascii=False)
 
