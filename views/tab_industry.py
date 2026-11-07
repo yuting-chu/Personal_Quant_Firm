@@ -152,6 +152,11 @@ def calculate_macro_sector_allocation(macro_matrix: dict, sector_df: pd.DataFram
     將美聯儲淨流動性、薩姆規則、殖利率利差與降息姿態，透過多因子敏感度反應函數，
     動態評估 11 大板塊之宏觀適應度評分 (Macro Regime Score) 與推薦配置權重 (Target Weight %)。
     """
+    if isinstance(macro_matrix, tuple):
+        macro_matrix = macro_matrix[0] if len(macro_matrix) > 0 else {}
+    if not isinstance(macro_matrix, dict):
+        macro_matrix = {}
+
     net_liq_diff = float(macro_matrix.get('net_liq_diff', 0.024))
     sahm_val = float(macro_matrix.get('sahm_val', 0.00))
     t10y2y = float(macro_matrix.get('t10y2y_cur', 0.05))
@@ -266,7 +271,8 @@ def render(api_key: str):
 
     # 讀取 FRED API Key (優先從 session_state，其次由環境變數注入)
     fred_key = st.session_state.get('fred_key', '') or os.getenv('FRED_API_KEY', '').strip()
-    macro_matrix = fetch_macro_matrix(fred_key)
+    res = fetch_macro_matrix(fred_key)
+    macro_matrix = res[0] if isinstance(res, tuple) else res
     sector_df = load_and_calculate_sectors()
 
     # 執行宏觀向 11 大板塊計量傳導模型

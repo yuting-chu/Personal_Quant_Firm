@@ -8,6 +8,11 @@
 
 ### 🚀 里程碑：第三階段宏觀向 11 大 S&P 產業板塊傳導雷達、雙時區時鐘與自動化排程派送正式上線
 
+#### 修復與防禦 (Fixed & Resilience)
+- **修復 Tab 2 產業頁 etch_macro_matrix 元組解包異常 (iews/tab_industry.py)**：
+  - 修正接收 etch_macro_matrix 回傳之 (data_dict, is_live) Tuple 結構，杜絕 	uple object has no attribute 'get' 導致的前端崩潰。
+  - 於 calculate_macro_sector_allocation 注入防禦型型別檢查，相容 Tuple 與 Dict 雙重輸入格式。
+
 #### 新增與優化 (Added & Enhanced)
 - **全球雙時區標準化模組 (`modules/time_utils.py`)**：
   - 嚴格錨定台北時間 (`Asia/Taipei`, UTC+8) 與美東時間 (`America/New_York`, ET)，杜絕雲端容器預設 UTC 導致的時間偏離。
