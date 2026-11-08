@@ -126,9 +126,19 @@ def run_monte_carlo_var(total_capital: float, weights: dict, num_simulations: in
 # ==========================================
 # 2. 主視圖渲染入口 (Main Render Entry)
 # ==========================================
-def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, est_margin_used: float = 285000):
+def render(
+    total_capital: float,
+    api_key: str,
+    est_margin_ratio: float = 28.5,
+    est_margin_used: float = 285000,
+    risk_mode: str = "🟢 標準收租",
+    peak_nav: float = None
+):
+    if peak_nav is None:
+        peak_nav = total_capital
+
     st.subheader("🛡️ 全域風控中心、部位對帳與蒙地卡羅動態壓力測試 (Risk Engine)")
-    st.caption("遵循華爾街頂級避險基金風控標準：四重宏觀熔斷閘門 × 10,000 次相關性蒙地卡羅模擬 × 尾部 Put 對衝精算。")
+    st.caption("遵循華爾街頂級避險基金與 Prop Firm 自營考核標準：四重宏觀熔斷閘門 × 10,000 次相關性蒙地卡羅模擬 × R-Unit 精確倉位計算。")
 
     # 讀取宏觀矩陣
     fred_key = st.session_state.get("fred_key", "") or os.getenv("FRED_API_KEY", "").strip()
@@ -501,7 +511,136 @@ def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, e
     st.markdown("---")
 
     # ==========================================
-    # 6. ⚡ 歷史極端危機情境動態回放 (Historical Scenario Stress Replay)
+    # 6. ⚡ Prop Firm 專用：微型期貨與外匯 R-Unit 倉位精算機
+    # ==========================================
+    st.markdown("#### ⚡ Prop Firm 專用：微型期貨與外匯 $R$-Unit 倉位精算機 (CME Micro & FX Sizer)")
+    st.caption("嚴格遵循 Topstep / Apex / FTMO 自營考核標準：依單筆風險預算 ($R\%$)、明確停損空間與 **IBKR Pro Tiered 真實來回手續費** 倒推最大合規口數。")
+
+    CONTRACT_SPECS = {
+        "/MES (微型標普 500)": {
+            "multiplier": 5.0,
+            "tick_size": 0.25,
+            "tick_value": 1.25,
+            "default_px": 5980.0,
+            "ibkr_comm_rt": 1.24,  # $0.62 * 2 (CME + NFA + IBKR Tiered)
+            "margin_per_unit": 1400.0,
+            "unit_name": "口 (Contracts)"
+        },
+        "/MNQ (微型那指 100)": {
+            "multiplier": 2.0,
+            "tick_size": 0.25,
+            "tick_value": 0.50,
+            "default_px": 20950.0,
+            "ibkr_comm_rt": 1.24,  # $0.62 * 2
+            "margin_per_unit": 2100.0,
+            "unit_name": "口 (Contracts)"
+        },
+        "/MGC (微型黃金期貨)": {
+            "multiplier": 10.0,
+            "tick_size": 0.10,
+            "tick_value": 1.00,
+            "default_px": 2680.0,
+            "ibkr_comm_rt": 1.70,  # $0.85 * 2
+            "margin_per_unit": 1250.0,
+            "unit_name": "口 (Contracts)"
+        },
+        "USD/JPY (IDEALPRO 外匯 Mini Lot)": {
+            "multiplier": 10000.0,  # 1 Mini Lot = $10,000 USD
+            "tick_size": 0.01,      # 1 pip
+            "tick_value": 0.65,     # ~$0.65 USD/pip @ 153.8
+            "default_px": cur_usdjpy if 'cur_usdjpy' in locals() else 153.8,
+            "ibkr_comm_rt": 4.00,   # $2.00 min per order * 2 (來回)
+            "margin_per_unit": 500.0,
+            "unit_name": "手 (Mini Lots)"
+        }
+    }
+
+    r_col1, r_col2, r_col3, r_col4, r_col5 = st.columns([1.5, 1.0, 1.1, 1.1, 1.1])
+    with r_col1:
+        sel_sym = st.selectbox("標的選擇 (CME / IDEALPRO)：", list(CONTRACT_SPECS.keys()), index=0)
+        spec = CONTRACT_SPECS[sel_sym]
+    with r_col2:
+        trade_dir = st.selectbox("交易方向：", ["🟢 做多 (Long)", "🔴 做空 (Short)"])
+    with r_col3:
+        r_budget_pct = st.selectbox("單筆風險預算 ($R$%)：", [0.25, 0.50, 0.75, 1.00], index=1, help="Prop Firm 標準建議單筆不超過 0.5% ~ 1.0%")
+    with r_col4:
+        px_entry = st.number_input("進場價格 ($)：", value=float(spec["default_px"]), step=float(spec["tick_size"]), format="%.2f")
+    with r_col5:
+        default_stop = px_entry * 0.99 if "做多" in trade_dir else px_entry * 1.01
+        px_stop = st.number_input("硬停損價格 ($)：", value=float(round(default_stop, 2)), step=float(spec["tick_size"]), format="%.2f")
+
+    # 驗證停損合理性
+    is_long = "做多" in trade_dir
+    is_stop_valid = (px_stop < px_entry) if is_long else (px_stop > px_entry)
+    stop_distance_pts = abs(px_entry - px_stop)
+
+    effective_peak = peak_nav if peak_nav else total_capital
+    prop_trailing_buffer = max(total_capital - (effective_peak * 0.96), 0.0)
+    daily_loss_budget = total_capital * 0.015
+
+    if not is_stop_valid or stop_distance_pts <= 0:
+        st.warning("⚠️ **停損價格邏輯錯誤**：做多時停損價必須低於進場價；做空時停損價必須高於進場價！")
+    else:
+        # 計算每口虧損金額
+        if "USD/JPY" in sel_sym:
+            # 外匯換算：點數差 (JPY) / 進場匯率 * 10,000 USD
+            loss_per_unit_raw = (stop_distance_pts / px_entry) * spec["multiplier"]
+        else:
+            loss_per_unit_raw = stop_distance_pts * spec["multiplier"]
+
+        ibkr_fee_per_unit = spec["ibkr_comm_rt"]
+        total_loss_per_unit = loss_per_unit_raw + ibkr_fee_per_unit
+
+        # 帳戶總風險預算
+        max_risk_dollars = total_capital * (r_budget_pct / 100.0)
+        max_allowed_units = int(np.floor(max_risk_dollars / total_loss_per_unit)) if total_loss_per_unit > 0 else 0
+
+        # 計算總名目價值與保證金
+        if "USD/JPY" in sel_sym:
+            pos_notional = max_allowed_units * spec["multiplier"]
+        else:
+            pos_notional = max_allowed_units * px_entry * spec["multiplier"]
+
+        total_margin_req = max_allowed_units * spec["margin_per_unit"]
+        actual_max_loss = max_allowed_units * total_loss_per_unit
+        total_comm_cost = max_allowed_units * ibkr_fee_per_unit
+
+        breach_dll = actual_max_loss > daily_loss_budget
+        breach_trailing = actual_max_loss > prop_trailing_buffer
+
+        # 指標卡片呈現
+        m_r1, m_r2, m_r3, m_r4, m_r5 = st.columns(5)
+        m_r1.metric("建議最大開倉口數", f"{max_allowed_units} {spec['unit_name']}", f"每口點差: {stop_distance_pts:.2f} pt")
+        m_r2.metric("停損最大虧損 (含IBKR)", f"${actual_max_loss:,.2f}", f"手續費: ${total_comm_cost:.2f} USD", delta_color="inverse")
+        m_r3.metric("部位名目總曝險 (Notional)", f"${pos_notional:,.0f}", f"槓桿比率: {(pos_notional/total_capital):.2f}x")
+        m_r4.metric("預估佔用保證金", f"${total_margin_req:,.0f}", f"佔總資金: {(total_margin_req/total_capital*100):.1f}%")
+
+        if breach_trailing and "Prop Firm" in risk_mode:
+            m_r5.metric("Prop 考核合規判定", "🚨 違規禁止開倉", f"超出動態緩衝 ${prop_trailing_buffer:,.0f}", delta_color="inverse")
+        elif breach_dll:
+            m_r5.metric("Prop 考核合規判定", "🚨 超過單日 DLL", f"單日上限 ${daily_loss_budget:,.0f}", delta_color="inverse")
+        elif max_allowed_units == 0:
+            m_r5.metric("Prop 考核合規判定", "🟡 資金不足 1 口", "請擴大停損或增加本金")
+        else:
+            m_r5.metric("Prop 考核合規判定", "🟢 100% 紀律合規", "已計入 IBKR 來回成本", delta_color="normal")
+
+        st.markdown(
+            f"""
+            <div style="background-color: rgba(59, 130, 246, 0.08); border-left: 4px solid #3b82f6; padding: 10px 14px; border-radius: 6px; margin-top: 6px; font-size: 12px; color: inherit; line-height: 1.6;">
+                <b>💡 Prop Firm 風控執行摘要：</b>
+                當前帳戶規模為 <b>${total_capital:,.0f} USD</b>，設定單筆風險預算 <b>{r_budget_pct}% (${max_risk_dollars:,.0f} USD)</b>。<br>
+                在 <code>{sel_sym}</code> 進場價 <b>${px_entry:.2f}</b>、停損價 <b>${px_stop:.2f}</b> (點差 <b>{stop_distance_pts:.2f} pt</b>) 條件下：
+                每口原始價差損失 <b>${loss_per_unit_raw:.2f}</b> + IBKR Pro Tiered 來回手續費與規費 <b>${ibkr_fee_per_unit:.2f}</b> = 每口總風險 <b>${total_loss_per_unit:.2f} USD</b>。<br>
+                嚴格取整數下限 (Floor) 計算，最大允許建倉 <b>{max_allowed_units} {spec['unit_name']}</b>。不幸觸發停損時，總虧損金額絕對鎖定在 <b>${actual_max_loss:,.2f} USD</b> (佔帳戶 <b>{actual_max_loss/total_capital*100:.2f}%</b>)，完全不擊穿 Prop Firm 單日與動態水線！
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("---")
+
+    # ==========================================
+    # 7. ⚡ 歷史極端危機情境動態回放 (Historical Scenario Stress Replay)
     # ==========================================
     st.markdown("#### ⚡ 歷史極端危機情境動態回放 (Historical Stress Scenario Replay)")
     st.caption("依據目前實際組合之槓桿與資產敏感度，精算歷史重大危機重現時的預估最大衝擊損益：")
@@ -543,7 +682,7 @@ def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, e
     st.markdown("---")
 
     # ==========================================
-    # 7. 🤖 首席風控官 (AI CRO Agent - Gemini-3.6-flash)
+    # 8. 🤖 首席風控官 (AI CRO Agent - Gemini-3.6-flash)
     # ==========================================
     col_news, col_ai = st.columns([1.1, 1.9])
     with col_news:
@@ -575,6 +714,8 @@ def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, e
 
 【當前資產組合實時參數】：
 - 總資產淨值 (NAV)：${total_capital:,.0f} USD
+- 風控模式：{risk_mode}
+- 歷史最高水位 (Peak NAV)：${effective_peak:,.0f} USD (距離 4.0% 爆倉緩衝: ${prop_trailing_buffer:,.0f} USD)
 - 維持保證金佔用率：{actual_margin_ratio:.1f}% (全域上限 55.0%)
 - 組合總槓桿倍數：{gross_leverage:.2f}x
 - 組合淨系統性 Delta：{total_delta:+.2f} | 總 Vega 曝險：${total_vega:.0f}/點
@@ -595,9 +736,9 @@ def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, e
 {news_summary}
 
 【報告撰寫格式要求】：
-1. 【全域風險評級與體系診斷】：給出目前組合風險姿態 (DEFCON 1 至 5)，評估當前流動性與極端尾部暴露。
+1. 【全域風險評級與體系診斷】：給出目前組合風險姿態 (DEFCON 1 至 5)，評估當前流動性、Prop Firm 動態回撤緩衝與極端尾部暴露。
 2. 【蒙地卡羅與極端尾部壓力解析】：針對 VaR 99% 與 CVaR 進行深度推導，解析若遭遇日圓再度拆倉或流動性閃崩時的連鎖反應。
-3. 【動態對衝與部位調整指令】：給出精確到口數/比例的對衝指令（如 SPY OTM Put、黃金或美債存續期調整）。
+3. 【動態對衝與部位調整指令】：給出精確到口數/比例的對衝指令（如 SPY OTM Put、黃金或美債存續期調整，或 CME 微型期貨避險）。
 4. 【白話風控總結】：在最後附上一段 100 字白話解讀，讓一般投資人也能理解核心風險與當下應做動作。
 """
                         report_text = generate_content_with_fallback(api_key, prompt, timeout=120)

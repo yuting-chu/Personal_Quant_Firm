@@ -4,6 +4,27 @@
 
 ---
 
+## [1.9.0] - 2026-11-08
+
+### ⚡ 里程碑：對接 Interactive Brokers (IBKR) 官方真實費率矩陣與 Prop Firm 自營考核風控標準 (Topstep/Apex/FTMO)
+
+#### 新增與優化 (Added & Enhanced)
+- **🏛️ 全域頂部戰情室新增「⚡ Prop Firm 自營考核模式」(`app.py`)**：
+  - **動態高水位線追蹤 (High-Water Mark, Peak NAV)**：實時記錄歷史最高資產淨值，杜絕傳統靜態本金造成的盲區。
+  - **最大動態追蹤回撤硬熔斷 (Max Trailing Drawdown 4.0%)**：計算動態爆倉違規線 $\text{Breach Line} = \text{Peak NAV} \times 96\%$，並實時呈現「距離爆倉線緩衝金額 ($)」與安全警示。
+  - **單日最大虧損熔斷 (Daily Loss Limit 1.5%)**：即時聯動 SQLite 真實當日已實現損益，破標時強制發動硬熔斷警報。
+- **🛡️ CME 微型期貨與即期外匯 $R$-Unit 倉位精算機 (`views/tab_risk.py`)**：
+  - 專為 `/MES` (微型標普)、`/MNQ` (微型那指)、`/MGC` (微型黃金) 與 `USD/JPY` (IDEALPRO 外匯) 打造之自營商考核開倉口數精算器。
+  - **全包摩擦成本扣除**：每口成本完整納入 CME/NFA 交易所規費與 IBKR Pro Tiered 來回佣金 ($1.24/口 MES/MNQ, $1.70/口 MGC)。
+  - **整數下限 (Floor) 絕對控險**：嚴格依單筆風險預算 ($R\%$) 倒推合規口數，徹底根除情緒化超額下單。
+  - **實時考核合規判定**：動態檢核單筆停損是否擊穿當日 DLL (1.5%) 或動態回撤水線。
+- **🧪 宏觀板塊調倉單對接 IBKR Pro Tiered 階梯式精算模型 (`views/tab_backtest.py`)**：
+  - 支援「IBKR Pro Tiered 階梯式精算」與「保守百分比模型」雙軌切換。
+  - 精確套用 IBKR Pro 官方階梯費率（$0.0035/股，低消 $0.35/單）並在賣出時精算 SEC 交易費 (0.00278%) 與 FINRA TAF 規費 ($0.000166/股)。
+  - 批次調倉清單與資料庫交易日誌即時記載真實摩擦成本。
+- **🤖 首席風控官 (CRO) 審計備忘錄全面整合 Prop 考核維度 (`views/tab_risk.py`)**：
+  - AI CRO 提示詞全面導入動態高水位線 (Peak NAV)、距違規線緩衝金額與 Prop 合規姿態診斷。
+
 ## [1.8.2] - 2026-11-08
 
 ### 🎨 全域深淺色適配：全面修復淺色白底模式下文字對比度，報告改用 Streamlit 原生高對比 Info 容器

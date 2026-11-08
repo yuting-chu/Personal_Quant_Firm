@@ -109,7 +109,16 @@ with st.sidebar:
 
     st.markdown("---")
     st.subheader("🛡️ 全域風控模式")
-    risk_mode = st.selectbox("模式切換：", ["🟢 標準收租", "🟡 謹慎防禦", "🔴 極限熔斷 (Risk-Off)"], index=0)
+    risk_mode = st.selectbox(
+        "模式切換：",
+        [
+            "🟢 標準收租",
+            "🟡 謹慎防禦",
+            "🔴 極限熔斷 (Risk-Off)",
+            "⚡ Prop Firm 考核模式 (Max DD 4.0%, Daily 1.5%)"
+        ],
+        index=0
+    )
 
     st.markdown("---")
     with st.expander("🔑 系統 API 金鑰與連線設定", expanded=False):
@@ -164,34 +173,80 @@ with st.sidebar:
 # ==========================================
 # 3. 頂部動態資產戰情看板與回撤熔斷檢查
 # ==========================================
-# 熔斷機制改接真實資料：從 quant_firm.db 撈今日已實現損益，
-# 不再是寫死的 -0.32（過去無論登入幾次都是同一個數字，等於沒有真的在監控）。
+# 熔斷機制接真實資料：從 quant_firm.db 撈今日已實現損益
 today_realized_pnl = get_today_realized_pnl()
+current_nav = total_capital + today_realized_pnl
+
+if 'peak_nav' not in st.session_state:
+    st.session_state['peak_nav'] = float(current_nav)
+else:
+    if current_nav > st.session_state['peak_nav']:
+        st.session_state['peak_nav'] = float(current_nav)
+
+peak_nav = st.session_state['peak_nav']
+
 daily_drawdown_pct = round((today_realized_pnl / total_capital) * 100, 2) if total_capital else 0.0
-max_drawdown_limit = -1.50
+trailing_dd_dollars = max(peak_nav - current_nav, 0.0)
+trailing_dd_pct = (trailing_dd_dollars / peak_nav * 100.0) if peak_nav > 0 else 0.0
 
-if daily_drawdown_pct <= max_drawdown_limit:
-    st.error(f"🚨 **【觸發單日回撤硬熔斷】** 今日累計回撤已達 {daily_drawdown_pct}% (超過上限 {max_drawdown_limit}%)！請立即停止所有 25% 衛星部位交易！")
+is_prop_mode = "Prop Firm" in risk_mode
+max_drawdown_limit = -1.50  # 單日最大虧損限額 (DLL)
+max_trailing_limit = 4.00   # Prop Firm 動態回撤上限 (MTD)
 
-# 保證金佔用率隨風控模式變動，這組數字會原封不動傳給 tab_risk，
-# 避免兩個分頁各自寫死、數字對不起來。
-est_margin_ratio = 30.9 if "標準" in risk_mode else (22.5 if "謹慎" in risk_mode else 12.0)
+# Prop Firm 動態爆倉警戒線 (High-Water Mark - 4.0%)
+prop_breach_line = peak_nav * (1.0 - (max_trailing_limit / 100.0))
+buffer_to_breach_dollars = current_nav - prop_breach_line
+buffer_to_breach_pct = (buffer_to_breach_dollars / peak_nav * 100.0) if peak_nav > 0 else 0.0
+
+if is_prop_mode:
+    if trailing_dd_pct >= max_trailing_limit:
+        st.error(
+            f"🚨 **【觸發 Prop Firm 最大動態回撤爆倉硬熔斷】** 當前高水位回撤達 {trailing_dd_pct:.2f}% (超過上限 {max_trailing_limit}%)！"
+            f"資產已跌破違規警戒線 (${prop_breach_line:,.0f} USD)，帳號立即停權，請立刻終止所有交易！"
+        )
+    elif daily_drawdown_pct <= max_drawdown_limit:
+        st.error(
+            f"🚨 **【觸發 Prop Firm 單日最大虧損熔斷 (DLL)】** 今日累計虧損已達 {daily_drawdown_pct}% (超過單日上限 {max_drawdown_limit}%)！"
+            f"今日嚴禁再開立任何新倉位！"
+        )
+else:
+    if daily_drawdown_pct <= max_drawdown_limit:
+        st.error(f"🚨 **【觸發單日回撤硬熔斷】** 今日累計回撤已達 {daily_drawdown_pct}% (超過上限 {max_drawdown_limit}%)！請立即停止所有 25% 衛星部位交易！")
+
+# 保證金佔用率隨風控模式變動，這組數字會原封不動傳給 tab_risk，避免兩個分頁各自寫死
+est_margin_ratio = 18.5 if is_prop_mode else (30.9 if "標準" in risk_mode else (22.5 if "謹慎" in risk_mode else 12.0))
 est_margin_used = total_capital * (est_margin_ratio / 100)
 est_theta = round(total_capital * 0.000485, 2)
 
 st.markdown("## 📊 總體資產戰情室 (CIO & Risk Dashboard)")
 
-col_nav, col_margin, col_greeks, col_risk = st.columns([1.2, 1.2, 1.4, 1.2])
-with col_nav:
-    pnl_pct = (today_realized_pnl / total_capital * 100) if total_capital else 0.0
-    st.metric("總資產淨值 (NAV)", f"${total_capital:,.0f}", f"{today_realized_pnl:+,.0f} ({pnl_pct:+.2f}%) 今日已實現")
-with col_margin:
-    m_color = "🟢 安全" if est_margin_ratio < 40 else "🟡 警戒"
-    st.metric(f"保證金佔用 ({m_color})", f"${est_margin_used:,.0f} ({est_margin_ratio}%)", "上限 55.0%", delta_color="inverse")
-with col_greeks:
-    st.metric("組合 Greeks", f"Δ -0.04 | +${est_theta:,.0f}/日", "Vega: -$120/點")
-with col_risk:
-    st.metric("今日回撤 / 預算上限", f"{daily_drawdown_pct}%", f"上限 {max_drawdown_limit}%", delta_color="normal")
+if is_prop_mode:
+    col_nav, col_peak, col_buffer, col_daily, col_margin = st.columns([1.2, 1.2, 1.3, 1.2, 1.1])
+    with col_nav:
+        pnl_pct = (today_realized_pnl / total_capital * 100) if total_capital else 0.0
+        st.metric("當前資產 (Current NAV)", f"${current_nav:,.0f}", f"{today_realized_pnl:+,.0f} ({pnl_pct:+.2f}%) 今日已實現")
+    with col_peak:
+        st.metric("歷史最高水線 (Peak NAV)", f"${peak_nav:,.0f}", f"動態回撤: -{trailing_dd_pct:.2f}%")
+    with col_buffer:
+        b_color = "🟢 安全" if buffer_to_breach_pct >= 2.0 else ("🟡 警戒" if buffer_to_breach_pct >= 1.0 else "🔴 瀕臨違規")
+        st.metric(f"距離爆倉線緩衝 ({b_color})", f"${buffer_to_breach_dollars:,.0f}", f"違規線: ${prop_breach_line:,.0f} ({buffer_to_breach_pct:.2f}%)", delta_color="normal")
+    with col_daily:
+        st.metric("今日虧損 / DLL 上限", f"{daily_drawdown_pct}%", f"單日上限 {max_drawdown_limit}%", delta_color="normal")
+    with col_margin:
+        m_color = "🟢 安全" if est_margin_ratio < 40 else "🟡 警戒"
+        st.metric(f"保證金佔用 ({m_color})", f"${est_margin_used:,.0f} ({est_margin_ratio}%)", "上限 55.0%", delta_color="inverse")
+else:
+    col_nav, col_margin, col_greeks, col_risk = st.columns([1.2, 1.2, 1.4, 1.2])
+    with col_nav:
+        pnl_pct = (today_realized_pnl / total_capital * 100) if total_capital else 0.0
+        st.metric("總資產淨值 (NAV)", f"${total_capital:,.0f}", f"{today_realized_pnl:+,.0f} ({pnl_pct:+.2f}%) 今日已實現")
+    with col_margin:
+        m_color = "🟢 安全" if est_margin_ratio < 40 else "🟡 警戒"
+        st.metric(f"保證金佔用 ({m_color})", f"${est_margin_used:,.0f} ({est_margin_ratio}%)", "上限 55.0%", delta_color="inverse")
+    with col_greeks:
+        st.metric("組合 Greeks", f"Δ -0.04 | +${est_theta:,.0f}/日", "Vega: -$120/點")
+    with col_risk:
+        st.metric("今日回撤 / 預算上限", f"{daily_drawdown_pct}%", f"上限 {max_drawdown_limit}%", delta_color="normal")
 
 st.markdown("---")
 
@@ -216,7 +271,7 @@ with tab_b:
     tab_backtest.render(total_capital, api_key)
 
 with tab_r:
-    tab_risk.render(total_capital, api_key, est_margin_ratio, est_margin_used)
+    tab_risk.render(total_capital, api_key, est_margin_ratio, est_margin_used, risk_mode=risk_mode, peak_nav=peak_nav)
 
 with tab_a:
     tab_audit.render(total_capital, api_key)

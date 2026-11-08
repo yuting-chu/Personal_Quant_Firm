@@ -427,6 +427,16 @@ def render(total_capital: float, api_key: str):
             horizontal=True
         )
 
+        fee_model_choice = st.radio(
+            "調倉摩擦成本精算模型：",
+            [
+                "🏦 IBKR Pro Tiered 階梯式精算 ($0.0035/股, 低消 $0.35 + 規費 + 5 bps 滑價)",
+                "⚙️ 固定百分比保守模型 (5 bps 滑價 + 0.02% 手續費)"
+            ],
+            index=0,
+            horizontal=True
+        )
+
     # 取得最新價格
     symbols_to_fetch = tuple(allocation_df["代碼"].tolist() + ["SPY", "TLT", "GLD"])
     live_prices = get_live_prices(symbols_to_fetch)
@@ -476,15 +486,27 @@ def render(total_capital: float, api_key: str):
             action = "🟢 BUY"
             delta_shares = int(np.floor(delta_notional / cur_px))
             trade_notional = delta_shares * cur_px
-            trade_friction = trade_notional * friction_pct
+            if "IBKR Pro Tiered" in fee_model_choice:
+                broker_comm = max(0.35, delta_shares * 0.0035) if delta_shares > 0 else 0.0
+                slip_cost = trade_notional * (slippage_bps / 10000.0)
+                trade_friction = broker_comm + slip_cost
+            else:
+                trade_friction = trade_notional * friction_pct
             total_buy_notional += trade_notional
             total_friction_est += trade_friction
             new_shares = cur_sh + delta_shares
         else:
             action = "🔴 SELL"
             delta_shares = int(np.ceil(delta_notional / cur_px)) # 負數整股
-            trade_notional = abs(delta_shares) * cur_px
-            trade_friction = trade_notional * friction_pct
+            abs_sh = abs(delta_shares)
+            trade_notional = abs_sh * cur_px
+            if "IBKR Pro Tiered" in fee_model_choice:
+                broker_comm = max(0.35, abs_sh * 0.0035) if abs_sh > 0 else 0.0
+                slip_cost = trade_notional * (slippage_bps / 10000.0)
+                reg_fee = trade_notional * 0.0000278 + min(8.30, abs_sh * 0.000166)
+                trade_friction = broker_comm + slip_cost + reg_fee
+            else:
+                trade_friction = trade_notional * friction_pct
             total_sell_notional += trade_notional
             total_friction_est += trade_friction
             new_shares = cur_sh + delta_shares
@@ -514,7 +536,8 @@ def render(total_capital: float, api_key: str):
     k_o1, k_o2, k_o3, k_o4 = st.columns(4)
     k_o1.metric("預估總買進金額", f"${total_buy_notional:,.0f}", delta=f"{len(orders_df[orders_df['動作'] == '🟢 BUY'])} 檔標的")
     k_o2.metric("預估總賣出金額", f"${total_sell_notional:,.0f}", delta=f"{len(orders_df[orders_df['動作'] == '🔴 SELL'])} 檔標的", delta_color="inverse")
-    k_o3.metric("預估摩擦損耗 (滑價+手續費)", f"${total_friction_est:,.2f}", f"約 {(total_friction_est/capital_for_rebal*10000):.1f} bps", delta_color="inverse")
+    friction_tag = "IBKR Tiered" if "IBKR" in fee_model_choice else "保守估算"
+    k_o3.metric(f"預估摩擦損耗 ({friction_tag})", f"${total_friction_est:,.2f}", f"約 {(total_friction_est/capital_for_rebal*10000):.1f} bps", delta_color="inverse")
     k_o4.metric("調倉後現金留存水位", f"${est_target_cash:,.0f} ({est_target_cash_pct:.1f}%)", "安全流動性緩衝")
 
     # 呈現整股調倉訂單清單 (Styled Table)
