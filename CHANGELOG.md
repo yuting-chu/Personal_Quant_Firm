@@ -4,6 +4,25 @@
 
 ---
 
+## [1.8.0] - 2026-11-08
+
+### 🚀 里程碑：第四階段（Phase 4.3）Brinson 績效歸因瀑布圖、實盤訂單審計與 AI 投委會治理正式上線
+
+#### 新增與優化 (Added & Enhanced)
+- **🏆 Brinson-Fachler 績效歸因計量引擎 (`views/tab_audit.py`)**：
+  - **嚴格正交分解 Active Alpha**：將宏觀輪動的超額收益精確拆解為資產配置效應 (Allocation Effect)、標的選擇效應 (Selection Effect) 與交互效應 (Interaction Effect)。
+  - **Plotly 歸因瀑布圖 (Waterfall Chart)**：以視覺化階梯直觀展示基準大盤報酬如何疊加配置 Alpha 形成最終組合報酬。
+  - **11 大板塊 Alpha 貢獻橫向長條圖與計量矩陣**：清晰標註科技股超配、公用事業低配等對超額報酬的精確數值貢獻。
+- **📋 實盤調倉訂單審計與摩擦追蹤 (`views/tab_audit.py` & `modules/database.py`)**：
+  - **完整接軌 Tab 3 調倉指令**：全面追蹤 SQLite `trade_logs` 中的調倉動作、整股股數、實現損益與摩擦滑價。
+  - **手續費與滑價精算**：累計已發生的調倉交易摩擦，保證回測假設與實盤記帳無縫對齊。
+  - **一鍵批量審計核可**：新增 `update_all_pending_trades_status`，支援投審會一鍵核准所有待審計調倉單。
+- **🏛️ 多 Agent 投資審計委員會 (IC Governance Meeting - Gemini-3.6-flash)**：
+  - **三方聯席審計**：整合首席投資官 (CIO)、首席風控官 (CRO) 與首席量化交易員 (Quant Trader) 之專業視角。
+  - **合規決議備忘錄 (IC Resolution & Mandate)**：自動輸出治理評級 (AAA/AA)、調倉授權許可、風險對衝指引與白話決策總結。
+
+---
+
 ## [1.7.0] - 2026-11-08
 
 ### 🚀 里程碑：第四階段（Phase 4.2）四重宏觀風控熔斷閘門、蒙地卡羅 10,000 次 VaR/CVaR 與尾部 Put 對衝精算正式上線

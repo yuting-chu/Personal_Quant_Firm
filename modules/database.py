@@ -89,6 +89,19 @@ def get_trade_logs():
     return df
 
 
+def update_all_pending_trades_status(new_status: str = "已核准 (IC Verified)") -> int:
+    """
+    一鍵核准所有待審計狀態的交易訂單。
+    """
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE trade_logs SET audit_status = ? WHERE audit_status LIKE '%待審計%'", (new_status,))
+    updated_count = c.rowcount
+    conn.commit()
+    conn.close()
+    return updated_count
+
+
 def get_today_realized_pnl():
     """今日（本機日期）所有交易紀錄的已實現損益加總，用於單日回撤熔斷計算。"""
     conn = sqlite3.connect(DB_PATH)
