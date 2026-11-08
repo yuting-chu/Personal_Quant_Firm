@@ -340,7 +340,7 @@ def render(total_capital: float, api_key: str):
         with col_insight:
             st.markdown(
                 """
-                <div style="background-color: #1a1d28; padding: 14px; border-radius: 6px; border-left: 4px solid #63b3ed; line-height: 1.6; font-size: 13px;">
+                <div style="background-color: #1a1d28; padding: 14px; border-radius: 6px; border-left: 4px solid #63b3ed; line-height: 1.6; font-size: 13px; color: #f1f5f9;">
                     <b>💡 行為金融學量化診斷：</b><br>
                     • <b>嚴格紀律遵守度：</b>系統自動化調倉執行消除了 90% 以上因「處置效應（Disposition Effect，過早賣出獲利、緊抱虧損）」所引發的心態失衡。<br>
                     • <b>幸運序列識別：</b>當單筆獲利大於 3 倍標準差時，自動標記為「疑似幸運序列」，提醒投審會勿過度提高該子策略風險預算。<br>
@@ -396,14 +396,18 @@ def render(total_capital: float, api_key: str):
 5. 【白話決策總結】：附上一段 100 字白話總結，讓一般投資人直觀掌握本次覆盤核心結論。
 """
                     ic_report = generate_content_with_fallback(api_key, prompt, timeout=120)
-                    st.markdown(
-                        f"""
-                        <div style="background-color: #1a1d28; padding: 20px; border-radius: 8px; border: 1px solid #2d3748; line-height: 1.7; margin-top: 12px;">
-                            {ic_report}
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                    st.success("✅ **投資審計委員會 (IC) 聯席合規審計備忘錄生成完畢**")
+                    with st.container(border=True):
+                        st.markdown(
+                            """
+                            <div style="background: linear-gradient(90deg, #312e81 0%, #0f172a 100%); padding: 12px 18px; border-radius: 6px; margin-bottom: 14px; border-left: 5px solid #ecc94b;">
+                                <span style="font-weight: 700; color: #ffffff; font-size: 15px;">🏛️ 投資審計委員會 (IC) 聯席合規審計備忘錄</span>
+                                <span style="font-size: 12px; color: #fde68a; margin-left: 10px;">CIO × CRO × Quant Trader Joint Resolution</span>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        st.markdown(ic_report)
                 except Exception as e:
                     st.error(f"投審會會議生成失敗: {e}")
 

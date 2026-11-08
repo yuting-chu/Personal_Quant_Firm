@@ -601,13 +601,17 @@ def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, e
 4. 【白話風控總結】：在最後附上一段 100 字白話解讀，讓一般投資人也能理解核心風險與當下應做動作。
 """
                         report_text = generate_content_with_fallback(api_key, prompt, timeout=120)
-                        st.markdown(
-                            f"""
-                            <div style="background-color: #1a1d28; padding: 18px; border-radius: 8px; border: 1px solid #2d3748; line-height: 1.7; margin-top: 10px;">
-                                {report_text}
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
+                        st.success("✅ **首席風控官 (CRO) 深度風控審計報告生成完畢**")
+                        with st.container(border=True):
+                            st.markdown(
+                                """
+                                <div style="background: linear-gradient(90deg, #1e3a8a 0%, #0f172a 100%); padding: 12px 18px; border-radius: 6px; margin-bottom: 14px; border-left: 5px solid #38bdf8;">
+                                    <span style="font-weight: 700; color: #ffffff; font-size: 15px;">🛡️ 首席風控官 (CRO) 深度風控審計備忘錄</span>
+                                    <span style="font-size: 12px; color: #93c5fd; margin-left: 10px;">Wall Street CRO Risk Audit Memo</span>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                            st.markdown(report_text)
                     except Exception as e:
                         st.error(f"連線生成失敗: {e}")

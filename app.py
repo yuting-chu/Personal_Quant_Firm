@@ -53,6 +53,27 @@ st.markdown("""
         font-weight: 600 !important;
         padding: 6px 14px !important;
     }
+    /* 全域文字高對比與研報清晰度強化 */
+    div[data-testid="stMarkdownContainer"] h1,
+    div[data-testid="stMarkdownContainer"] h2,
+    div[data-testid="stMarkdownContainer"] h3 {
+        color: #63b3ed !important;
+        font-weight: 700 !important;
+    }
+    div[data-testid="stMarkdownContainer"] h4,
+    div[data-testid="stMarkdownContainer"] h5 {
+        color: #ecc94b !important;
+        font-weight: 600 !important;
+    }
+    div[data-testid="stMarkdownContainer"] strong,
+    div[data-testid="stMarkdownContainer"] b {
+        color: #f6e05e !important;
+    }
+    div[data-testid="stMarkdownContainer"] p,
+    div[data-testid="stMarkdownContainer"] li {
+        color: #f1f5f9;
+        line-height: 1.7;
+    }
 </style>
 """, unsafe_allow_html=True)
 
