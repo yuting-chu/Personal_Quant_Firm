@@ -183,80 +183,80 @@ def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, e
     with b1:
         if c1_triggered:
             st.markdown(
-                f"<div style='background-color:#2d1515;border-left:4px solid #ff4b4b;padding:10px;border-radius:6px;'>"
-                f"<div style='font-size:11px;color:#cbd5e0;'>閘門 1：薩姆衰退熔斷</div>"
-                f"<div style='font-weight:bold;color:#ff4b4b;font-size:14px;'>🚨 衰退破標 ({sahm_val:.2f}%)</div>"
-                f"<div style='font-size:11px;color:#a0aec0;margin-top:2px;'>≥ 0.50% 觸發高 Beta 砍半轉現金</div></div>",
+                f"<div style='background-color:rgba(239, 68, 68, 0.12);border-left:4px solid #ef4444;padding:10px;border-radius:6px;'>"
+                f"<div style='font-size:11px;color:#64748b;'>閘門 1：薩姆衰退熔斷</div>"
+                f"<div style='font-weight:bold;color:#dc2626;font-size:14px;'>🚨 衰退破標 ({sahm_val:.2f}%)</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>≥ 0.50% 觸發高 Beta 砍半轉現金</div></div>",
                 unsafe_allow_html=True
             )
         else:
             st.markdown(
-                f"<div style='background-color:#15241b;border-left:4px solid #00cc96;padding:10px;border-radius:6px;'>"
-                f"<div style='font-size:11px;color:#cbd5e0;'>閘門 1：薩姆衰退熔斷</div>"
-                f"<div style='font-weight:bold;color:#00cc96;font-size:14px;'>🟢 景氣安全 ({sahm_val:.2f}%)</div>"
-                f"<div style='font-size:11px;color:#a0aec0;margin-top:2px;'>< 0.50% 無衰退徵兆</div></div>",
+                f"<div style='background-color:rgba(16, 185, 129, 0.12);border-left:4px solid #10b981;padding:10px;border-radius:6px;'>"
+                f"<div style='font-size:11px;color:#64748b;'>閘門 1：薩姆衰退熔斷</div>"
+                f"<div style='font-weight:bold;color:#059669;font-size:14px;'>🟢 景氣安全 ({sahm_val:.2f}%)</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>< 0.50% 無衰退徵兆</div></div>",
                 unsafe_allow_html=True
             )
 
     with b2:
         if c2_triggered:
             st.markdown(
-                f"<div style='background-color:#2d1515;border-left:4px solid #ff4b4b;padding:10px;border-radius:6px;'>"
-                f"<div style='font-size:11px;color:#cbd5e0;'>閘門 2：維持保證金熔斷</div>"
-                f"<div style='font-weight:bold;color:#ff4b4b;font-size:14px;'>🔴 保證金超標 ({est_margin_ratio:.1f}%)</div>"
-                f"<div style='font-size:11px;color:#a0aec0;margin-top:2px;'>≥ 55% 嚴禁開倉，僅准平倉</div></div>",
+                f"<div style='background-color:rgba(239, 68, 68, 0.12);border-left:4px solid #ef4444;padding:10px;border-radius:6px;'>"
+                f"<div style='font-size:11px;color:#64748b;'>閘門 2：維持保證金熔斷</div>"
+                f"<div style='font-weight:bold;color:#dc2626;font-size:14px;'>🔴 保證金超標 ({est_margin_ratio:.1f}%)</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>≥ 55% 嚴禁開倉，僅准平倉</div></div>",
                 unsafe_allow_html=True
             )
         elif est_margin_ratio >= 40.0:
             st.markdown(
-                f"<div style='background-color:#2d2615;border-left:4px solid #ffaa00;padding:10px;border-radius:6px;'>"
-                f"<div style='font-size:11px;color:#cbd5e0;'>閘門 2：維持保證金熔斷</div>"
-                f"<div style='font-weight:bold;color:#ffaa00;font-size:14px;'>🟡 警戒水位 ({est_margin_ratio:.1f}%)</div>"
-                f"<div style='font-size:11px;color:#a0aec0;margin-top:2px;'>40%~55% 限制槓桿擴張</div></div>",
+                f"<div style='background-color:rgba(245, 158, 11, 0.14);border-left:4px solid #f59e0b;padding:10px;border-radius:6px;'>"
+                f"<div style='font-size:11px;color:#64748b;'>閘門 2：維持保證金熔斷</div>"
+                f"<div style='font-weight:bold;color:#d97706;font-size:14px;'>🟡 警戒水位 ({est_margin_ratio:.1f}%)</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>40%~55% 限制槓桿擴張</div></div>",
                 unsafe_allow_html=True
             )
         else:
             st.markdown(
-                f"<div style='background-color:#15241b;border-left:4px solid #00cc96;padding:10px;border-radius:6px;'>"
-                f"<div style='font-size:11px;color:#cbd5e0;'>閘門 2：維持保證金熔斷</div>"
-                f"<div style='font-weight:bold;color:#00cc96;font-size:14px;'>🟢 保證金安全 ({est_margin_ratio:.1f}%)</div>"
-                f"<div style='font-size:11px;color:#a0aec0;margin-top:2px;'>< 40% 具充裕流動性緩衝</div></div>",
+                f"<div style='background-color:rgba(16, 185, 129, 0.12);border-left:4px solid #10b981;padding:10px;border-radius:6px;'>"
+                f"<div style='font-size:11px;color:#64748b;'>閘門 2：維持保證金熔斷</div>"
+                f"<div style='font-weight:bold;color:#059669;font-size:14px;'>🟢 保證金安全 ({est_margin_ratio:.1f}%)</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>< 40% 具充裕流動性緩衝</div></div>",
                 unsafe_allow_html=True
             )
 
     with b3:
         if c3_triggered:
             st.markdown(
-                f"<div style='background-color:#2d1515;border-left:4px solid #ff4b4b;padding:10px;border-radius:6px;'>"
-                f"<div style='font-size:11px;color:#cbd5e0;'>閘門 3：日圓 Carry 拆倉</div>"
-                f"<div style='font-weight:bold;color:#ff4b4b;font-size:14px;'>⚠️ 觸發停損 ({cur_usdjpy:.2f})</div>"
-                f"<div style='font-size:11px;color:#a0aec0;margin-top:2px;'>跌破 20MA ({ma20_usdjpy:.2f}) 防範踩踏</div></div>",
+                f"<div style='background-color:rgba(239, 68, 68, 0.12);border-left:4px solid #ef4444;padding:10px;border-radius:6px;'>"
+                f"<div style='font-size:11px;color:#64748b;'>閘門 3：日圓 Carry 拆倉</div>"
+                f"<div style='font-weight:bold;color:#dc2626;font-size:14px;'>⚠️ 觸發停損 ({cur_usdjpy:.2f})</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>跌破 20MA ({ma20_usdjpy:.2f}) 防範踩踏</div></div>",
                 unsafe_allow_html=True
             )
         else:
             st.markdown(
-                f"<div style='background-color:#15241b;border-left:4px solid #00cc96;padding:10px;border-radius:6px;'>"
-                f"<div style='font-size:11px;color:#cbd5e0;'>閘門 3：日圓 Carry 拆倉</div>"
-                f"<div style='font-weight:bold;color:#00cc96;font-size:14px;'>🟢 息差收租正常 ({cur_usdjpy:.2f})</div>"
-                f"<div style='font-size:11px;color:#a0aec0;margin-top:2px;'>高於 20MA ({ma20_usdjpy:.2f})</div></div>",
+                f"<div style='background-color:rgba(16, 185, 129, 0.12);border-left:4px solid #10b981;padding:10px;border-radius:6px;'>"
+                f"<div style='font-size:11px;color:#64748b;'>閘門 3：日圓 Carry 拆倉</div>"
+                f"<div style='font-weight:bold;color:#059669;font-size:14px;'>🟢 息差收租正常 ({cur_usdjpy:.2f})</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>高於 20MA ({ma20_usdjpy:.2f})</div></div>",
                 unsafe_allow_html=True
             )
 
     with b4:
         if c4_triggered:
             st.markdown(
-                f"<div style='background-color:#2d2615;border-left:4px solid #ffaa00;padding:10px;border-radius:6px;'>"
-                f"<div style='font-size:11px;color:#cbd5e0;'>閘門 4：股債相關性對衝</div>"
-                f"<div style='font-weight:bold;color:#ffaa00;font-size:14px;'>🟡 股債同向雙殺 (ρ={stock_bond_corr:+.2f})</div>"
-                f"<div style='font-size:11px;color:#a0aec0;margin-top:2px;'>ρ > +0.30 長債避險失效</div></div>",
+                f"<div style='background-color:rgba(245, 158, 11, 0.14);border-left:4px solid #f59e0b;padding:10px;border-radius:6px;'>"
+                f"<div style='font-size:11px;color:#64748b;'>閘門 4：股債相關性對衝</div>"
+                f"<div style='font-weight:bold;color:#d97706;font-size:14px;'>🟡 股債同向雙殺 (ρ={stock_bond_corr:+.2f})</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>ρ > +0.30 長債避險失效</div></div>",
                 unsafe_allow_html=True
             )
         else:
             st.markdown(
-                f"<div style='background-color:#15241b;border-left:4px solid #00cc96;padding:10px;border-radius:6px;'>"
-                f"<div style='font-size:11px;color:#cbd5e0;'>閘門 4：股債相關性對衝</div>"
-                f"<div style='font-weight:bold;color:#00cc96;font-size:14px;'>🟢 避險對衝有效 (ρ={stock_bond_corr:+.2f})</div>"
-                f"<div style='font-size:11px;color:#a0aec0;margin-top:2px;'>股債負/低相關性良好</div></div>",
+                f"<div style='background-color:rgba(16, 185, 129, 0.12);border-left:4px solid #10b981;padding:10px;border-radius:6px;'>"
+                f"<div style='font-size:11px;color:#64748b;'>閘門 4：股債相關性對衝</div>"
+                f"<div style='font-weight:bold;color:#059669;font-size:14px;'>🟢 避險對衝有效 (ρ={stock_bond_corr:+.2f})</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>股債負/低相關性良好</div></div>",
                 unsafe_allow_html=True
             )
 
@@ -483,15 +483,15 @@ def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, e
 
         st.markdown(
             f"""
-            <div style="background-color: #1a1d28; border: 1px solid #2d3748; padding: 12px; border-radius: 6px; margin-top: 8px;">
-                <div style="font-size: 13px; color: #a0aec0;">🎯 <b>建議對衝合約設計：</b></div>
-                <div style="font-size: 15px; font-weight: 700; color: #63b3ed; margin-top: 4px;">
+            <div style="background-color: rgba(59, 130, 246, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.3); padding: 14px; border-radius: 6px; margin-top: 8px;">
+                <div style="font-size: 13px; color: #64748b; font-weight: 600;">🎯 建議對衝合約設計：</div>
+                <div style="font-size: 15px; font-weight: 700; color: #1d4ed8; margin-top: 4px;">
                     買進 <b>{required_puts} 口</b> {hedge_symbol[:3]} 30DTE 履約價 ${put_strike:.0f} OTM Put
                 </div>
-                <div style="font-size: 12px; color: #cbd5e0; margin-top: 6px; line-height: 1.6;">
-                    • 預估總支出權利金：<b style="color: #ecc94b;">${total_premium_cost:,.0f} USD</b><br>
-                    • 月度避險成本費率：<b style="color: #ffaa00;">{monthly_insurance_rate:.2f}% / 月</b> (年化約 {monthly_insurance_rate*12:.1f}%)<br>
-                    • 極端崩盤保護力：若大盤單月下跌 15%，該 Put 倉位預估產生約 <b style="color: #00cc96;">+${(spy_px_est*0.10)*100*required_puts:,.0f} USD</b> 凸性避險利潤，可挽回組合 {hedge_ratio_pct}% 的下行虧損。
+                <div style="font-size: 12px; color: inherit; margin-top: 6px; line-height: 1.6;">
+                    • 預估總支出權利金：<b style="color: #b45309;">${total_premium_cost:,.0f} USD</b><br>
+                    • 月度避險成本費率：<b style="color: #d97706;">{monthly_insurance_rate:.2f}% / 月</b> (年化約 {monthly_insurance_rate*12:.1f}%)<br>
+                    • 極端崩盤保護力：若大盤單月下跌 15%，該 Put 倉位預估產生約 <b style="color: #059669;">+${(spy_px_est*0.10)*100*required_puts:,.0f} USD</b> 凸性避險利潤，可挽回組合 {hedge_ratio_pct}% 的下行虧損。
                 </div>
             </div>
             """,
@@ -602,16 +602,6 @@ def render(total_capital: float, api_key: str, est_margin_ratio: float = 28.5, e
 """
                         report_text = generate_content_with_fallback(api_key, prompt, timeout=120)
                         st.success("✅ **首席風控官 (CRO) 深度風控審計報告生成完畢**")
-                        with st.container(border=True):
-                            st.markdown(
-                                """
-                                <div style="background: linear-gradient(90deg, #1e3a8a 0%, #0f172a 100%); padding: 12px 18px; border-radius: 6px; margin-bottom: 14px; border-left: 5px solid #38bdf8;">
-                                    <span style="font-weight: 700; color: #ffffff; font-size: 15px;">🛡️ 首席風控官 (CRO) 深度風控審計備忘錄</span>
-                                    <span style="font-size: 12px; color: #93c5fd; margin-left: 10px;">Wall Street CRO Risk Audit Memo</span>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                            st.markdown(report_text)
+                        st.info(report_text)
                     except Exception as e:
                         st.error(f"連線生成失敗: {e}")

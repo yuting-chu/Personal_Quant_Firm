@@ -42,37 +42,16 @@ st.markdown("""
     div[data-testid="stTabs"] > div:first-child {
         position: sticky;
         top: 2.875rem;
-        background-color: #0e1117;
+        background-color: var(--background-color, #ffffff);
         z-index: 999;
         padding-top: 8px;
         padding-bottom: 8px;
-        border-bottom: 1px solid #262730;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
     }
     button[data-baseweb="tab"] {
         font-size: 15px !important;
         font-weight: 600 !important;
         padding: 6px 14px !important;
-    }
-    /* 全域文字高對比與研報清晰度強化 */
-    div[data-testid="stMarkdownContainer"] h1,
-    div[data-testid="stMarkdownContainer"] h2,
-    div[data-testid="stMarkdownContainer"] h3 {
-        color: #63b3ed !important;
-        font-weight: 700 !important;
-    }
-    div[data-testid="stMarkdownContainer"] h4,
-    div[data-testid="stMarkdownContainer"] h5 {
-        color: #ecc94b !important;
-        font-weight: 600 !important;
-    }
-    div[data-testid="stMarkdownContainer"] strong,
-    div[data-testid="stMarkdownContainer"] b {
-        color: #f6e05e !important;
-    }
-    div[data-testid="stMarkdownContainer"] p,
-    div[data-testid="stMarkdownContainer"] li {
-        color: #f1f5f9;
-        line-height: 1.7;
     }
 </style>
 """, unsafe_allow_html=True)

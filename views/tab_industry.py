@@ -288,9 +288,9 @@ def render(api_key: str):
     # 宏觀情境橫幅
     st.markdown(
         f"""
-        <div style="background-color: #1a1d28; border-left: 4px solid #3182ce; padding: 12px 16px; border-radius: 6px; margin-bottom: 12px;">
-            <div style="font-size: 15px; font-weight: 700; color: #63b3ed;">{overlay['regime_title']}</div>
-            <div style="font-size: 13px; color: #cbd5e0; margin-top: 4px; line-height: 1.5;">{overlay['regime_desc']}</div>
+        <div style="background-color: rgba(49, 130, 206, 0.1); border-left: 4px solid #3182ce; padding: 12px 16px; border-radius: 6px; margin-bottom: 12px;">
+            <div style="font-size: 15px; font-weight: 700; color: #2b6cb0;">{overlay['regime_title']}</div>
+            <div style="font-size: 13px; color: inherit; margin-top: 4px; line-height: 1.5;">{overlay['regime_desc']}</div>
         </div>
         """,
         unsafe_allow_html=True

@@ -303,63 +303,63 @@ def render(total_capital: float, api_key: str):
     with c_sig1:
         if usdjpy_status == "ABOVE_20MA":
             st.markdown(
-                f"<div style='background-color:#1a1d28;padding:12px;border-radius:6px;border-left:4px solid #00cc96;'>"
-                f"<div style='font-size:11px;color:#a0aec0;'>Hedged Carry (USD/JPY)</div>"
-                f"<div style='font-weight:bold;color:#00cc96;font-size:15px;'>🟢 持倉收息 ({cur_usdjpy:.2f})</div>"
-                f"<div style='font-size:11px;color:#cbd5e0;margin-top:2px;'>高於 20MA ({ma20_usdjpy:.2f})</div></div>",
+                f"<div style='background-color:rgba(16, 185, 129, 0.12);padding:12px;border-radius:6px;border-left:4px solid #10b981;'>"
+                f"<div style='font-size:11px;color:#64748b;'>Hedged Carry (USD/JPY)</div>"
+                f"<div style='font-weight:bold;color:#059669;font-size:15px;'>🟢 持倉收息 ({cur_usdjpy:.2f})</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>高於 20MA ({ma20_usdjpy:.2f})</div></div>",
                 unsafe_allow_html=True
             )
         else:
             st.markdown(
-                f"<div style='background-color:#1a1d28;padding:12px;border-radius:6px;border-left:4px solid #ff4b4b;'>"
-                f"<div style='font-size:11px;color:#a0aec0;'>Hedged Carry (USD/JPY)</div>"
-                f"<div style='font-weight:bold;color:#ff4b4b;font-size:15px;'>🔴 觸發停損 ({cur_usdjpy:.2f})</div>"
-                f"<div style='font-size:11px;color:#cbd5e0;margin-top:2px;'>跌破 20MA，避險對衝！</div></div>",
+                f"<div style='background-color:rgba(239, 68, 68, 0.12);padding:12px;border-radius:6px;border-left:4px solid #ef4444;'>"
+                f"<div style='font-size:11px;color:#64748b;'>Hedged Carry (USD/JPY)</div>"
+                f"<div style='font-weight:bold;color:#dc2626;font-size:15px;'>🔴 觸發停損 ({cur_usdjpy:.2f})</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>跌破 20MA，避險對衝！</div></div>",
                 unsafe_allow_html=True
             )
 
     with c_sig2:
         if live_dte <= 10:
             st.markdown(
-                f"<div style='background-color:#1a1d28;padding:12px;border-radius:6px;border-left:4px solid #ff4b4b;'>"
-                f"<div style='font-size:11px;color:#a0aec0;'>SPY Options Delta-Neutral</div>"
-                f"<div style='font-weight:bold;color:#ff4b4b;font-size:15px;'>🔴 執行換約 (DTE: {live_dte}天)</div>"
-                f"<div style='font-size:11px;color:#cbd5e0;margin-top:2px;'>Gamma 上升，平倉滾動</div></div>",
+                f"<div style='background-color:rgba(239, 68, 68, 0.12);padding:12px;border-radius:6px;border-left:4px solid #ef4444;'>"
+                f"<div style='font-size:11px;color:#64748b;'>SPY Options Delta-Neutral</div>"
+                f"<div style='font-weight:bold;color:#dc2626;font-size:15px;'>🔴 執行換約 (DTE: {live_dte}天)</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>Gamma 上升，平倉滾動</div></div>",
                 unsafe_allow_html=True
             )
         else:
             st.markdown(
-                f"<div style='background-color:#1a1d28;padding:12px;border-radius:6px;border-left:4px solid #00cc96;'>"
-                f"<div style='font-size:11px;color:#a0aec0;'>SPY Options Delta-Neutral</div>"
-                f"<div style='font-weight:bold;color:#00cc96;font-size:15px;'>🟢 正常收 Theta (DTE: {live_dte}天)</div>"
-                f"<div style='font-size:11px;color:#cbd5e0;margin-top:2px;'>維持 Delta 中性狀態</div></div>",
+                f"<div style='background-color:rgba(16, 185, 129, 0.12);padding:12px;border-radius:6px;border-left:4px solid #10b981;'>"
+                f"<div style='font-size:11px;color:#64748b;'>SPY Options Delta-Neutral</div>"
+                f"<div style='font-weight:bold;color:#059669;font-size:15px;'>🟢 正常收 Theta (DTE: {live_dte}天)</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>維持 Delta 中性狀態</div></div>",
                 unsafe_allow_html=True
             )
 
     with c_sig3:
         if cur_vix < 13.0:
             st.markdown(
-                f"<div style='background-color:#1a1d28;padding:12px;border-radius:6px;border-left:4px solid #ffaa00;'>"
-                f"<div style='font-size:11px;color:#a0aec0;'>VRP 波動率溢價套利</div>"
-                f"<div style='font-weight:bold;color:#ffaa00;font-size:15px;'>🟡 觀望空倉 (VIX: {cur_vix:.2f})</div>"
-                f"<div style='font-size:11px;color:#cbd5e0;margin-top:2px;'>溢價薄弱，不冒進建倉</div></div>",
+                f"<div style='background-color:rgba(245, 158, 11, 0.14);padding:12px;border-radius:6px;border-left:4px solid #f59e0b;'>"
+                f"<div style='font-size:11px;color:#64748b;'>VRP 波動率溢價套利</div>"
+                f"<div style='font-weight:bold;color:#d97706;font-size:15px;'>🟡 觀望空倉 (VIX: {cur_vix:.2f})</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>溢價薄弱，不冒進建倉</div></div>",
                 unsafe_allow_html=True
             )
         else:
             st.markdown(
-                f"<div style='background-color:#1a1d28;padding:12px;border-radius:6px;border-left:4px solid #00cc96;'>"
-                f"<div style='font-size:11px;color:#a0aec0;'>VRP 波動率溢價套利</div>"
-                f"<div style='font-weight:bold;color:#00cc96;font-size:15px;'>🟢 正常收溢價 (VIX: {cur_vix:.2f})</div>"
-                f"<div style='font-size:11px;color:#cbd5e0;margin-top:2px;'>IV-HV 空間充足</div></div>",
+                f"<div style='background-color:rgba(16, 185, 129, 0.12);padding:12px;border-radius:6px;border-left:4px solid #10b981;'>"
+                f"<div style='font-size:11px;color:#64748b;'>VRP 波動率溢價套利</div>"
+                f"<div style='font-weight:bold;color:#059669;font-size:15px;'>🟢 正常收溢價 (VIX: {cur_vix:.2f})</div>"
+                f"<div style='font-size:11px;color:#334155;margin-top:2px;'>IV-HV 空間充足</div></div>",
                 unsafe_allow_html=True
             )
 
     with c_sig4:
         st.markdown(
-            f"<div style='background-color:#1a1d28;padding:12px;border-radius:6px;border-left:4px solid #3182ce;'>"
-            f"<div style='font-size:11px;color:#a0aec0;'>宏觀板塊輪動訊號</div>"
-            f"<div style='font-weight:bold;color:#63b3ed;font-size:15px;'>🔵 動態配置執行中</div>"
-            f"<div style='font-size:11px;color:#cbd5e0;margin-top:2px;'>依 Tab 2 宏觀目標比重調整</div></div>",
+            f"<div style='background-color:rgba(59, 130, 246, 0.12);padding:12px;border-radius:6px;border-left:4px solid #3b82f6;'>"
+            f"<div style='font-size:11px;color:#64748b;'>宏觀板塊輪動訊號</div>"
+            f"<div style='font-weight:bold;color:#2563eb;font-size:15px;'>🔵 動態配置執行中</div>"
+            f"<div style='font-size:11px;color:#334155;margin-top:2px;'>依 Tab 2 宏觀目標比重調整</div></div>",
             unsafe_allow_html=True
         )
 
