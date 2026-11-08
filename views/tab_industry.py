@@ -277,6 +277,8 @@ def render(api_key: str):
 
     # 執行宏觀向 11 大板塊計量傳導模型
     allocation_df, overlay = calculate_macro_sector_allocation(macro_matrix, sector_df)
+    st.session_state['macro_allocation_df'] = allocation_df
+    st.session_state['macro_overlay'] = overlay
 
     # ==========================================
     # 1. 🌊 宏觀流動性與景氣週期板塊配置雷達

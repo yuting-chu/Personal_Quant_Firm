@@ -50,6 +50,38 @@ def insert_trade_log(symbol, action, pnl, strategy_type, reason, audit_status):
     conn.close()
 
 
+def insert_batch_trade_logs(trades: list) -> int:
+    """
+    批次寫入多筆調倉與交易紀錄至 SQLite。
+    trades 每個元素需為 dict: {'symbol', 'action', 'pnl', 'strategy_type', 'reason', 'audit_status'}
+    """
+    if not trades:
+        return 0
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    now_str = get_taipei_timestamp()
+    records = [
+        (
+            now_str,
+            t.get('symbol', ''),
+            t.get('action', ''),
+            float(t.get('pnl', 0.0)),
+            t.get('strategy_type', '宏觀動態調倉'),
+            t.get('reason', ''),
+            t.get('audit_status', '待審計')
+        )
+        for t in trades
+    ]
+    c.executemany('''
+        INSERT INTO trade_logs (timestamp, symbol, action, pnl, strategy_type, reason, audit_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', records)
+    inserted_count = c.rowcount
+    conn.commit()
+    conn.close()
+    return inserted_count
+
+
 def get_trade_logs():
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("SELECT * FROM trade_logs ORDER BY timestamp DESC", conn)
