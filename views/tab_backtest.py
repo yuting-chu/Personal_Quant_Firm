@@ -654,10 +654,10 @@ def render(total_capital: float, api_key: str):
         hide_index=True
     )
 
-    # 模擬執行並批次寫入資料庫
-    col_exec1, col_exec2 = st.columns([2, 3])
+    # 執行操作列
+    col_exec1, col_exec2 = st.columns([1.2, 1.3])
     with col_exec1:
-        if st.button("💾 確認模擬執行並寫入交易日誌 (Log Execution to Database)", type="primary", use_container_width=True):
+        if st.button("💾 確認模擬執行並寫入交易日誌 (Log Database)", type="secondary", use_container_width=True):
             trades_to_insert = []
             for _, o in orders_df.iterrows():
                 if o["動作"] != "⚪ HOLD" and o["調倉股數 (Δ)"] != 0:
@@ -675,6 +675,30 @@ def render(total_capital: float, api_key: str):
                 st.success(f"✅ 成功執行！已將 {inserted} 筆板塊調倉單完整寫入 SQLite 交易日誌庫，預估手續費與滑價扣除 ${total_friction_est:,.2f} USD。")
             else:
                 st.info("ℹ️ 當前所有標的差異均在最小敏感度閾值以內，無須觸發任何實質調倉單。")
+
+    with col_exec2:
+        if st.button("🚀 直送 IBKR 模擬帳戶實盤下單 (Route to TWS)", type="primary", use_container_width=True):
+            from modules.ibkr_engine import get_ibkr_engine
+            engine = get_ibkr_engine(port=7497, client_id=12)
+            if not engine.connect():
+                st.error("🚨 無法連線至本地 TWS (Port 7497)！請確認 TWS 已開啟並啟用 Socket API。")
+            else:
+                sent_cnt = 0
+                error_list = []
+                for _, o in orders_df.iterrows():
+                    if o["動作"] != "⚪ HOLD" and o["調倉股數 (Δ)"] != 0:
+                        act = "BUY" if "BUY" in o["動作"] else "SELL"
+                        res = engine.place_market_order(o["代碼"], act, abs(int(o["調倉股數 (Δ)"])))
+                        if res.get("success"):
+                            sent_cnt += 1
+                        else:
+                            error_list.append(f"{o['代碼']}: {res.get('msg')}")
+                if sent_cnt > 0:
+                    st.success(f"🎉 成功直送！已將 {sent_cnt} 筆調倉單直接送入 IBKR 模擬帳戶 (TWS)，請在 TWS 交易視窗查驗！")
+                elif error_list:
+                    st.warning(f"部分標的送單受阻: {'; '.join(error_list[:3])}")
+                else:
+                    st.info("ℹ️ 當前所有標的差異均在最小敏感度閾值以內，無須發單。")
 
     st.markdown("---")
 
@@ -964,6 +988,50 @@ def render(total_capital: float, api_key: str):
             """,
             unsafe_allow_html=True
         )
+
+    # ==========================================
+    # 4.1 ⚡ IBKR 模擬交易即時括號單沙盒 (TWS Bracket Order Sandbox)
+    # ==========================================
+    with st.expander("⚡ IBKR 模擬交易即時括號單沙盒 (TWS Bracket Order Sandbox)", expanded=False):
+        st.caption("透過本地 API 直接向 TWS 模擬帳戶 (Port 7497) 送出機構級全自動括號限價單 (Parent + Stop Loss + Take Profit)：")
+
+        b_c1, b_c2, b_c3, b_c4, b_c5 = st.columns([1.2, 1.0, 1.1, 1.1, 1.1])
+        with b_c1:
+            bo_symbol = st.selectbox("下單標的：", ["/MES", "/MNQ", "SPY", "USD/JPY"], index=0, key="bo_sym")
+        with b_c2:
+            bo_action = st.selectbox("方向：", ["BUY", "SELL"], index=0, key="bo_act")
+        with b_c3:
+            bo_qty = st.number_input("委託數量 (口/股/手)：", min_value=1, max_value=100, value=1, step=1, key="bo_qty")
+        with b_c4:
+            def_entry = 5980.0 if "MES" in bo_symbol else (20950.0 if "MNQ" in bo_symbol else (595.0 if "SPY" in bo_symbol else 153.80))
+            bo_entry = st.number_input("進場限價 ($)：", value=float(def_entry), step=0.25, format="%.2f", key="bo_px")
+        with b_c5:
+            def_sl = bo_entry - 15.0 if bo_action == "BUY" else bo_entry + 15.0
+            bo_sl = st.number_input("硬停損價 ($)：", value=float(def_sl), step=0.25, format="%.2f", key="bo_sl")
+
+        bo_tp = bo_entry + (abs(bo_entry - bo_sl) * 1.5) if bo_action == "BUY" else bo_entry - (abs(bo_entry - bo_sl) * 1.5)
+        st.caption(f"• 自動連動 1.5R 停利目標價：`${bo_tp:.2f}` (預期每口利潤約 ${abs(bo_entry - bo_tp)*5:.2f} USD)")
+
+        if st.button("📤 送出 IBKR 括號限價單 (Parent + SL + TP)", type="primary", use_container_width=True, key="btn_send_bracket"):
+            from modules.ibkr_engine import get_ibkr_engine
+            engine = get_ibkr_engine(port=7497, client_id=15)
+            if not engine.connect():
+                st.error("🚨 無法連線至本地 TWS (Port 7497)！請確認 TWS 已開啟並啟用 Socket API。")
+            else:
+                sec_type = "FUT" if "/" in bo_symbol else ("CASH" if "JPY" in bo_symbol else "STK")
+                res = engine.place_bracket_order(
+                    symbol=bo_symbol,
+                    action=bo_action,
+                    quantity=int(bo_qty),
+                    entry_price=float(bo_entry),
+                    stop_loss_price=float(bo_sl),
+                    take_profit_price=float(bo_tp),
+                    sec_type=sec_type
+                )
+                if res.get("success"):
+                    st.success(f"{res.get('msg')} | 請打開您的 TWS 桌面查看「訂單 (Orders)」視窗！")
+                else:
+                    st.error(f"下單失敗: {res.get('msg')}")
 
     st.markdown("---")
 

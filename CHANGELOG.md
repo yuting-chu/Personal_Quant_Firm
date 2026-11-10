@@ -4,6 +4,26 @@
 
 ---
 
+## [1.11.0] - 2026-11-10
+
+### 🚀 里程碑：Interactive Brokers (IBKR) API 實盤模擬交易引擎與 TWS 直送下單正式上線
+
+#### 新增與優化 (Added & Enhanced)
+- **🔌 核心 IBKR Socket 交易引擎實作 (`modules/ibkr_engine.py`)**：
+  - 基於 `ib_insync` 封裝高可用 Socket 介面，安全對接本地 TWS / IB Gateway 模擬交易通訊埠（Port 7497）。
+  - **實時資產與保證金同步**：自動獲取真實模擬帳號（`DUR346381`）、淨資產（NetLiquidation $1,000,000 USD）、總購買力 ($4,000,000 USD) 與持倉明細。
+  - **合約智能解析 (Contract Qualifier)**：原生相容 CME 微型期貨連續合約 (`/MES`, `/MNQ`, `/MGC`)、美股現貨/ETF (`SPY`) 與即期外匯 (`USD/JPY`)。
+  - **機構級全自動括號單 (Bracket Orders)**：Parent 限價單與伺服器端 Stop-Loss、Take-Profit 三聯單一次性原子送出，保證本地斷線時硬停損仍由 IBKR 主機執行。
+- **🏛️ 側邊欄即時連線控制台與資金同步 (`app.py`)**：
+  - 新增「📡 IBKR 模擬交易連線」卡片，自動辨識本地 TWS 運行狀態並顯示帳號、即時淨值與購買力。
+  - 支援「🔄 一鍵同步資金」：將 TWS 真實淨值直接注入全域資本配置控制台與風控看板。
+- **🧪 板塊調倉單一鍵直送 TWS (`views/tab_backtest.py`)**：
+  - 新增「🚀 直送 IBKR 模擬帳戶實盤下單」按鈕，可一鍵將 11 大宏觀板塊整股調倉單批量送入 TWS 撮合。
+- **⚡ 微型期貨括號單沙盒 (`views/tab_backtest.py`)**：
+  - 在第 4 節新增「IBKR 模擬交易即時括號單沙盒」，支援在前端介面手動指定進場、停損與 1.5R 停利點位，並一鍵直發 TWS。
+
+---
+
 ## [1.10.0] - 2026-11-09
 
 ### ⚡ 里程碑：微型期貨與外匯日內多策略回測實驗室 (Intraday Multi-Strategy Quant Lab) 正式上線

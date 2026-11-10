@@ -7,6 +7,8 @@ from modules.database import get_trade_logs, get_today_realized_pnl
 import importlib
 import modules.ai_engine
 import modules.time_utils
+import modules.ibkr_engine
+from modules.ibkr_engine import get_ibkr_engine
 from modules.time_utils import get_dual_clock_str
 from views import (
     tab_macro,
@@ -19,6 +21,7 @@ from views import (
 # 強制動態熱重載 (Hot-Reloading)，確保磁碟上的最新 AI 模型與指標邏輯即時生效，不被 Python 記憶體快取鎖定
 importlib.reload(modules.ai_engine)
 importlib.reload(modules.time_utils)
+importlib.reload(modules.ibkr_engine)
 importlib.reload(tab_macro)
 importlib.reload(tab_industry)
 importlib.reload(tab_backtest)
@@ -101,7 +104,8 @@ with st.sidebar:
     st.markdown("---")
 
     st.subheader("💰 資本配置控制台")
-    total_capital = st.number_input("總本金規模 (USD)：", min_value=10000, max_value=100000000, value=1000000, step=50000)
+    default_cap = int(st.session_state.get('synced_ib_capital', 1000000))
+    total_capital = st.number_input("總本金規模 (USD)：", min_value=10000, max_value=100000000, value=default_cap, step=50000)
 
     core_alloc = st.slider("75% 核心量化對衝 (%)", 50, 90, 75, 5)
     satellite_alloc = 100 - core_alloc
@@ -119,6 +123,44 @@ with st.sidebar:
         ],
         index=0
     )
+
+    st.markdown("---")
+    st.subheader("📡 IBKR 模擬交易連線 (TWS)")
+    col_ib1, col_ib2 = st.columns([1, 1])
+    with col_ib1:
+        btn_check_ib = st.button("🔌 檢測連線", use_container_width=True)
+    with col_ib2:
+        btn_sync_cap = st.button("🔄 同步資金", use_container_width=True)
+
+    engine = get_ibkr_engine(port=7497, client_id=10)
+    ib_summary = engine.get_account_summary()
+    st.session_state["ib_summary"] = ib_summary
+
+    if ib_summary.get("is_connected"):
+        st.markdown(
+            f"""
+            <div style="background-color: rgba(16, 185, 129, 0.12); border-left: 4px solid #10b981; padding: 10px; border-radius: 6px; font-size: 12px; line-height: 1.5;">
+                <b>🟢 TWS 模擬帳戶已連線</b><br>
+                • 帳號：<code>{ib_summary['account_id']}</code><br>
+                • 即時淨資產：<b>${ib_summary['net_liquidation']:,.0f} USD</b><br>
+                • 總購買力：<b>${ib_summary['buying_power']:,.0f} USD</b>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        if btn_sync_cap:
+            st.session_state['synced_ib_capital'] = int(ib_summary['net_liquidation'])
+            st.rerun()
+    else:
+        st.markdown(
+            """
+            <div style="background-color: rgba(239, 68, 68, 0.08); border-left: 4px solid #ef4444; padding: 10px; border-radius: 6px; font-size: 12px;">
+                <b>⚪ TWS 尚未連線</b><br>
+                請確認 TWS 已開啟並啟用 Socket API (Port 7497)
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     st.markdown("---")
     with st.expander("🔑 系統 API 金鑰與連線設定", expanded=False):
@@ -153,7 +195,7 @@ with st.sidebar:
         fred_key = user_fred_key.strip() if user_fred_key.strip() else loaded_fred_key
         st.session_state['fred_key'] = fred_key
 
-        st.selectbox("交易環境：", ["IG Group CFD (Live)", "IBKR Gateway (Paper Trading)"])
+        st.selectbox("交易環境：", ["IBKR TWS 模擬交易 (Port 7497)", "IG Group CFD (Live)"])
         if st.button("🔄 清除快取並重新整理行情"):
             st.cache_data.clear()
             st.rerun()
