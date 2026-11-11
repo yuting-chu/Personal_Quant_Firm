@@ -194,20 +194,26 @@ class IBKREngine:
             contract = self.make_contract(symbol, sec_type)
             action_clean = action.upper().strip()
 
-            # 建立括號單三聯件
+            # 建立括號單三聯件 (Parent + TP + SL)
             bracket = self.ib.bracketOrder(
                 action=action_clean,
                 quantity=quantity,
                 limitPrice=round(entry_price, 2),
                 takeProfitPrice=round(take_profit_price, 2),
-                stopLossPrice=round(stop_loss_price, 2)
+                stopLossPrice=round(stop_loss_price, 2),
+                tif="DAY"
             )
 
-            # 依序掛單
+            # 強制設置每筆子單之 TIF 為 DAY，確保 CME 期貨與各商品通過 TWS 預設規則驗證
+            for o in bracket:
+                o.tif = "DAY"
+
+            # 依序掛單 (由最後一筆 StopLoss transmit=True 觸發原子性全部送出)
             trades = []
             for o in bracket:
                 trade = self.ib.placeOrder(contract, o)
                 trades.append(trade)
+            self.ib.sleep(0.5)
 
             # 記錄到 SQLite 資料庫
             order_desc = f"{action_clean} {quantity} {symbol} @ 限價 ${entry_price:.2f} (停損: ${stop_loss_price:.2f}, 停利: ${take_profit_price:.2f})"

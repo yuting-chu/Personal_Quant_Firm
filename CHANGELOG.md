@@ -4,6 +4,23 @@
 
 ---
 
+## [1.12.0] - 2026-11-11
+
+### 🎯 里程碑：三大日內量化策略實盤模擬括號單全數掛單成功 (Live TWS Bracket Order Deployment)
+
+#### 核心優化與下單實測 (Execution & Enhancements)
+- **⚡ CME 微型期貨與外匯括號單 TIF（Time In Force）協定修復**：
+  - 修復 IBKR 期貨委託必須指定 `TIF='DAY'` 之規則限制（避免 TWS 預設規則阻斷 `Error 10349`）。
+  - 在 `modules/ibkr_engine.py` 括號單建構函式中強制同步 Parent、Take Profit、Stop Loss 三筆子單之 TIF，達成 IBKR 撮合引擎的原子性送單。
+- **🚀 三大量化策略全自動掛入 TWS 模擬伺服器 (帳號 DUR346381)**：
+  - **策略 1（/MES 日內 VWAP 均值回歸）**：買進 1 口 `/MES`，限價 $7610.00，停利 $7632.50，伺服器硬停損 $7595.00（OrderId: 16, 17, 18）。
+  - **策略 2（/MNQ 開盤 15M 動量突破）**：買進 1 口 `/MNQ`，限價 $28350.00，停利 $28416.00，伺服器硬停損 $28320.00（OrderId: 20, 21, 22）。
+  - **策略 3（USD/JPY 倫敦突破 Carry）**：買進 10,000 單位 `USD/JPY`，限價 ¥159.50，停利 ¥160.00，伺服器硬停損 ¥159.25（OrderId: 24, 25, 26）。
+- **📊 委託狀態即時驗證**：
+  - 經由 `ib.openTrades()` 雙向確認：3 筆 Parent 限價單處於 `Submitted` 活躍掛單狀態，6 筆子單處於 `PreSubmitted`（由母單成交後自動觸發）守護狀態。
+
+---
+
 ## [1.11.0] - 2026-11-10
 
 ### 🚀 里程碑：Interactive Brokers (IBKR) API 實盤模擬交易引擎與 TWS 直送下單正式上線
