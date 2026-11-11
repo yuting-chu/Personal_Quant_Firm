@@ -24,6 +24,7 @@ import json
 import signal
 import argparse
 import logging
+import math
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
@@ -188,7 +189,11 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                         c_mes = engine.make_contract("/MES", "FUT")
                         t_mes = engine.ib.reqMktData(c_mes)
                         time.sleep(1)
-                        mkt_price = t_mes.marketPrice() or t_mes.last or 7615.0
+                        mkt_price = 7630.0
+                        for p in [t_mes.marketPrice(), t_mes.last, t_mes.close, t_mes.bid, t_mes.ask]:
+                            if p is not None and not math.isnan(p) and p > 0:
+                                mkt_price = float(p)
+                                break
                         if mkt_price > 0:
                             entry_p = round(mkt_price - 6.0, 2)
                             sl_p = round(entry_p - 15.0, 2)
@@ -206,7 +211,11 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                         c_mnq = engine.make_contract("/MNQ", "FUT")
                         t_mnq = engine.ib.reqMktData(c_mnq)
                         time.sleep(1)
-                        mkt_price = t_mnq.marketPrice() or t_mnq.last or 28360.0
+                        mkt_price = 28540.0
+                        for p in [t_mnq.marketPrice(), t_mnq.last, t_mnq.close, t_mnq.bid, t_mnq.ask]:
+                            if p is not None and not math.isnan(p) and p > 0:
+                                mkt_price = float(p)
+                                break
                         if mkt_price > 0:
                             entry_p = round(mkt_price - 15.0, 2)
                             sl_p = round(entry_p - 30.0, 2)
@@ -224,7 +233,11 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                         c_fx = engine.make_contract("USDJPY", "CASH")
                         t_fx = engine.ib.reqMktData(c_fx)
                         time.sleep(1)
-                        mkt_price = t_fx.marketPrice() or t_fx.last or 159.50
+                        mkt_price = 159.50
+                        for p in [t_fx.marketPrice(), t_fx.last, t_fx.close, t_fx.bid, t_fx.ask]:
+                            if p is not None and not math.isnan(p) and p > 0:
+                                mkt_price = float(p)
+                                break
                         if mkt_price > 0:
                             entry_p = round(mkt_price - 0.05, 3)
                             sl_p = round(entry_p - 0.25, 3)
