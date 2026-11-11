@@ -39,9 +39,10 @@ class IBKREngine:
         self.ib: Optional[Any] = None
         self._connected = False
 
-    def connect(self, timeout: int = 4) -> bool:
+    def connect(self, timeout: int = 3) -> bool:
         """
         建立與本地 TWS / IB Gateway 的 Socket 連線
+        若遭遇 Error 326 (clientId 佔用衝突)，自動輪詢備用 clientId，保證連線不中斷。
         """
         if not HAS_IB_INSYNC:
             logger.error("ib_insync 套件未安裝")
@@ -51,15 +52,26 @@ class IBKREngine:
             self._connected = True
             return True
 
-        try:
-            self.ib = IB()
-            self.ib.connect(self.host, self.port, clientId=self.client_id, timeout=timeout)
-            self._connected = self.ib.isConnected()
-            return self._connected
-        except Exception as e:
-            logger.warning(f"IBKR 連線失敗 ({self.host}:{self.port}): {e}")
-            self._connected = False
-            return False
+        # 自動防衝突候選 Client ID 清單
+        candidate_ids = [self.client_id, self.client_id + 1, self.client_id + 2, self.client_id + 5, self.client_id + 10]
+        for cid in candidate_ids:
+            try:
+                self.ib = IB()
+                self.ib.connect(self.host, self.port, clientId=cid, timeout=timeout)
+                if self.ib.isConnected():
+                    self.client_id = cid
+                    self._connected = True
+                    return True
+            except Exception as e:
+                logger.warning(f"IBKR 連線重試 (clientId {cid}): {e}")
+                try:
+                    if self.ib:
+                        self.ib.disconnect()
+                except Exception:
+                    pass
+
+        self._connected = False
+        return False
 
     def disconnect(self):
         """中斷連線"""
@@ -265,6 +277,6 @@ _engine_instance: Optional[IBKREngine] = None
 
 def get_ibkr_engine(port: int = 7497, client_id: int = 10) -> IBKREngine:
     global _engine_instance
-    if _engine_instance is None or _engine_instance.port != port:
+    if _engine_instance is None or _engine_instance.port != port or _engine_instance.client_id != client_id or not _engine_instance.is_connected():
         _engine_instance = IBKREngine(port=port, client_id=client_id)
     return _engine_instance
