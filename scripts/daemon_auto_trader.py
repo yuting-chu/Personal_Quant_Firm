@@ -60,14 +60,19 @@ logger = logging.getLogger("AutoTraderDaemon")
 
 STATUS_FILE = os.path.join(PROJECT_ROOT, "daemon_status.json")
 
-# 風控關鍵常數
-MAX_DAILY_LOSS_PCT = 0.015  # -1.5% 單日最大虧損熔斷線
-COOLDOWN_SECONDS = 1800     # 30 分鐘同標的下單冷卻期
-CLIENT_ID = 401             # 專用 Daemon Client ID
+# 風控與動態刷新關鍵常數
+MAX_DAILY_LOSS_PCT = 0.015       # -1.5% 單日最大虧損熔斷線
+COOLDOWN_SECONDS = 1200          # 20 分鐘同標的下單冷卻期
+STALE_TIMEOUT_SECONDS = 1200     # 20 分鐘陳舊訂單超時閾值
+MES_DRIFT_THRESHOLD = 12.0       # /MES 價格偏離 12 點
+MNQ_DRIFT_THRESHOLD = 35.0       # /MNQ 價格偏離 35 點
+FX_DRIFT_THRESHOLD = 0.20        # USD/JPY 價格偏離 20 pips (0.20 日圓)
+CLIENT_ID = 401                  # 專用 Daemon Client ID
 
 # 全域狀態
 running = True
-last_order_times = {}       # {symbol: timestamp}
+last_order_times = {}            # {symbol: timestamp}
+order_submission_times = {}      # {orderId: timestamp}
 circuit_breaker_active = False
 recent_logs: List[str] = []
 
@@ -161,8 +166,9 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                     for t in engine.ib.openTrades():
                         engine.ib.cancelOrder(t.order)
 
-            # 5. 檢查現有委託與持倉 (防止重複下單)
+            # 5. 檢查現有委託與持倉 (防止重複下單，並識別母單)
             active_symbols = set()
+            parent_orders = {}  # {symbol: Trade}
             open_trades_count = 0
             if is_connected and not circuit_breaker_active:
                 engine.ib.reqAllOpenOrders()
@@ -176,6 +182,52 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                     elif ot.contract.secType == "CASH":
                         sym_clean = f"{sym_clean}{ot.contract.currency}"
                     active_symbols.add(sym_clean)
+
+                    # 登記有效中的母單 (Parent Limit Order)
+                    if ot.order.parentId == 0 and ot.orderStatus.status in ["Submitted", "PreSubmitted"]:
+                        parent_orders[sym_clean] = ot
+                        if ot.order.orderId not in order_submission_times:
+                            # 優先取既有 last_order_times 或初次登記時間
+                            order_submission_times[ot.order.orderId] = last_order_times.get(sym_clean, now - timedelta(minutes=25))
+
+            # 5.5 陳舊訂單【時間(20分) + 空間偏離】雙重檢測與動態刷新 (Stale Order Dynamic Refresh)
+            if is_connected and not circuit_breaker_active and parent_orders:
+                engine.ib.reqMarketDataType(3)
+                for sym, ot in list(parent_orders.items()):
+                    oid = ot.order.orderId
+                    sub_time = order_submission_times.get(oid, now - timedelta(minutes=25))
+                    elapsed_min = (now - sub_time).total_seconds() / 60.0
+
+                    # 條件一：掛單時間 >= 20 分鐘
+                    if elapsed_min >= (STALE_TIMEOUT_SECONDS / 60.0):
+                        # 抓取該標的最新市場價格
+                        c = ot.contract
+                        ticker = engine.ib.reqMktData(c)
+                        time.sleep(0.8)
+                        curr_mkt = None
+                        for p in [ticker.marketPrice(), ticker.last, ticker.close, ticker.bid, ticker.ask]:
+                            if p is not None and not math.isnan(p) and p > 0:
+                                curr_mkt = float(p)
+                                break
+
+                        if curr_mkt and ot.order.lmtPrice:
+                            lmt_price = float(ot.order.lmtPrice)
+                            distance = abs(curr_mkt - lmt_price)
+                            drift_limit = MES_DRIFT_THRESHOLD if "MES" in sym else (MNQ_DRIFT_THRESHOLD if "MNQ" in sym else FX_DRIFT_THRESHOLD)
+
+                            # 條件二：現價偏離已拉開超過安全閾值 (市場重心已跑遠)
+                            if distance >= drift_limit:
+                                add_recent_log(f"🔄 【陳舊單動態刷新】{sym} 掛單已排隊 {elapsed_min:.1f} 分鐘且現價偏離 {distance:.2f} 點 (閾值 {drift_limit})！")
+                                add_recent_log(f"🛑 撤銷舊掛單 (Order ID {oid} @ {lmt_price})，依最新現價 {curr_mkt} 重新計算佈局...")
+                                engine.ib.cancelOrder(ot.order)
+                                time.sleep(1.0)
+                                if sym in active_symbols:
+                                    active_symbols.remove(sym)
+                                if sym.replace("/", "") in active_symbols:
+                                    active_symbols.remove(sym.replace("/", ""))
+                                last_order_times[sym] = datetime.min
+                                if oid in order_submission_times:
+                                    del order_submission_times[oid]
 
             # 6. 量化策略評估與自動發單
             if is_connected and not circuit_breaker_active and risk_multiplier > 0:
