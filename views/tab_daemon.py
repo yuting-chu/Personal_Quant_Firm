@@ -82,15 +82,19 @@ def render(api_key: str = ""):
     with col_stat2:
         tws_conn = status_data.get("tws_connected", False)
         if tws_conn:
-            st.info(f"🔌 **TWS 模擬帳戶**<br>`{status_data.get('account_id', 'DUR346381')}`", unsafe_allow_html=True)
+            st.info(f"🔌 **TWS 模擬帳戶**: `{status_data.get('account_id', 'DUR346381')}`")
         else:
             st.error("🔌 **TWS 連線離線**")
 
     with col_stat3:
-        today_pnl = get_today_realized_pnl()
+        today_pnl = status_data.get("today_realized_pnl", 0.0) or get_today_realized_pnl()
+        net_liq = float(status_data.get("net_liquidation", 1000000.0))
+        if net_liq > 0 and today_pnl == 0.0:
+            today_pnl = round(net_liq - 1000000.0, 2)
+
         cb_triggered = status_data.get("circuit_breaker_triggered", False)
         if cb_triggered:
-            st.error(f"🚨 **硬熔斷已觸發**<br>損益: `${today_pnl:+,.2f}`", unsafe_allow_html=True)
+            st.error(f"🚨 **硬熔斷已觸發**: 損益 ${today_pnl:+,.2f}")
         else:
             pnl_color = "green" if today_pnl >= 0 else "red"
             st.markdown(f"💰 **今日已實現損益**<br><span style='color:{pnl_color}; font-weight:bold; font-size:16px;'>${today_pnl:+,.2f} USD</span>", unsafe_allow_html=True)

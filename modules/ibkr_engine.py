@@ -97,6 +97,8 @@ class IBKREngine:
             "total_cash": 0.0,
             "buying_power": 0.0,
             "excess_liquidity": 0.0,
+            "init_margin": 0.0,
+            "maint_margin": 0.0,
             "unrealized_pnl": 0.0,
             "realized_pnl": 0.0,
             "currency": "USD"
@@ -122,6 +124,10 @@ class IBKREngine:
                     summary_dict["buying_power"] = float(it.value)
                 elif it.tag == "ExcessLiquidity":
                     summary_dict["excess_liquidity"] = float(it.value)
+                elif it.tag in ["InitMarginReq", "FullInitMarginReq"]:
+                    summary_dict["init_margin"] = float(it.value)
+                elif it.tag in ["MaintMarginReq", "FullMaintMarginReq"]:
+                    summary_dict["maint_margin"] = float(it.value)
                 elif it.tag == "UnrealizedPnL":
                     summary_dict["unrealized_pnl"] = float(it.value)
                 elif it.tag == "RealizedPnL":
