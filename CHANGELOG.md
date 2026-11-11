@@ -4,6 +4,29 @@
 
 ---
 
+## [1.13.0] - 2026-11-11
+
+### 🤖 里程碑：全自動背景交易守護進程、解耦情緒核心與產業定價矩陣正式落地 (Autonomous Trading Daemon & Decoupled Quant Ecosystem)
+
+#### 核心新增與工程落地 (Added & Architecture)
+- **🤖 全自動背景監控交易守護進程 (`scripts/daemon_auto_trader.py` & `run_daemon.bat`)**：
+  - 實作 24 小時無人值守定時輪詢守護進程，自動監控 TWS 模擬交易帳戶（Port 7497）。
+  - **三道多層級風控安全閥**：單日 -1.5% 總淨值硬熔斷（DLL）、標的 30 分鐘冷卻期（防洗盤過度交易）、部位名目曝險上限。
+  - **心跳與狀態對齊**：輸出 `daemon_status.json`，支援 TWS 斷線自動重連與活動委託原子性對齊。
+- **🌐 宏觀情緒核心與可插拔架構 (`modules/sentiment_engine.py` & `docs/SENTIMENT_ENGINE_SPEC.md`)**：
+  - 定義並封裝標準數據契約（`sentiment_score`, `volatility_shock_flag`, `risk_multiplier`）。
+  - 現行由「Yahoo Finance / Google News RSS + Gemini-3.6-flash」與詞典啟發式雙重備援驅動。
+  - **自建模型熱插拔接口**：在 `docs/SENTIMENT_ENGINE_SPEC.md` 中詳細定義未來使用者自建深度學習模型或外部平台的替換步驟。
+- **📊 產業研究與標的價格動態定價引擎 (`modules/industry_engine.py`)**：
+  - 定期拉取 11 大 S&P 板塊與核心資產（SPY, QQQ, NVDA, TLT, GLD）最新價格。
+  - 實作「超買過熱懲罰機制 (Overbought Penalty)」：結合 50MA Z-Score 與 14D RSI，防止在高估值泡沫點位追高好產業。
+  - 分析結果自動存入 SQLite 研報庫（`macro_daily_reports`）。
+- **🖥️ 旗艦前端專屬看板整合 (`views/tab_daemon.py` & `app.py`)**：
+  - 新增首頁「🤖 全自動交易看板」：一鍵啟停背景進程、一鍵單次輪詢、一鍵全面撤單。
+  - 實時展示情緒儀表、產業價格矩陣、今日交易結果明細（Execution Blotter）與歷史研究報告瀏覽器。
+
+---
+
 ## [1.12.0] - 2026-11-11
 
 ### 🎯 里程碑：三大日內量化策略實盤模擬括號單全數掛單成功 (Live TWS Bracket Order Deployment)

@@ -11,6 +11,7 @@ import modules.ibkr_engine
 from modules.ibkr_engine import get_ibkr_engine
 from modules.time_utils import get_dual_clock_str
 from views import (
+    tab_daemon,
     tab_macro,
     tab_industry,
     tab_backtest,
@@ -22,6 +23,7 @@ from views import (
 importlib.reload(modules.ai_engine)
 importlib.reload(modules.time_utils)
 importlib.reload(modules.ibkr_engine)
+importlib.reload(tab_daemon)
 importlib.reload(tab_macro)
 importlib.reload(tab_industry)
 importlib.reload(tab_backtest)
@@ -293,15 +295,19 @@ else:
 st.markdown("---")
 
 # ==========================================
-# 4. 五大部門分頁路由
+# 4. 六大部門分頁路由 (新增全自動交易與研報看板)
 # ==========================================
-tab_m, tab_i, tab_b, tab_r, tab_a = st.tabs([
+tab_d, tab_m, tab_i, tab_b, tab_r, tab_a = st.tabs([
+    "🤖 全自動交易看板",
     "🌍 總經戰情室",
     "🏭 產業研究與個股圖表",
     "🧪 策略管理與執行指令",
     "🛡️ 風控與壓力測試",
     "📝 稽核覆盤與 AI 投委會"
 ])
+
+with tab_d:
+    tab_daemon.render(api_key)
 
 with tab_m:
     tab_macro.render(api_key)

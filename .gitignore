@@ -42,3 +42,5 @@ Thumbs.db
 desktop.ini
 .vscode/
 .idea/
+*.log
+daemon_status.json
