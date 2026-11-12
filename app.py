@@ -321,7 +321,6 @@ else:
     with col_margin:
         m_color = "🟢 安全" if est_margin_ratio < 40 else "🟡 警戒"
         st.metric(f"保證金佔用 ({m_color})", f"${est_margin_used:,.0f} ({est_margin_ratio}%)", "上限 55.0%", delta_color="inverse")
-        st.metric(f"保證金佔用 ({m_color})", f"${est_margin_used:,.0f} ({est_margin_ratio}%)", "上限 55.0%", delta_color="inverse")
     with col_greeks:
         st.metric("組合 Greeks", f"Δ -0.04 | +${est_theta:,.0f}/日", "Vega: -$120/點")
     with col_risk:
