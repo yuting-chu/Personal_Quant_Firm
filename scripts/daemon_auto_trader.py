@@ -120,8 +120,8 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
     current_sentiment = {}
     risk_multiplier = 1.0
 
-    try:
-        while running:
+    while running:
+        try:
             iterations += 1
             now = datetime.now()
             add_recent_log(f"--- 執行循環 #{iterations} ({get_taipei_timestamp()}) ---")
@@ -327,26 +327,50 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
             # 睡眠等待下一個輪詢循環
             time.sleep(interval_sec)
 
-    except KeyboardInterrupt:
-        logger.info("使用者中斷，正在關閉守護進程...")
-    except Exception as err:
-        logger.error(f"守護進程主循環遭遇嚴重例外: {err}", exc_info=True)
-    finally:
-        # 標記狀態為停止
-        logger.info("正在退出守護進程並更新狀態檔案...")
-        update_status_file({
-            "is_running": False,
-            "pid": None,
-            "last_heartbeat": get_taipei_timestamp(),
-            "tws_connected": False,
-            "circuit_breaker_triggered": circuit_breaker_active,
-            "recent_logs": recent_logs[-10:]
-        })
-        try:
-            engine.disconnect()
-        except Exception:
-            pass
-        logger.info("守護進程已安全離線。")
+        except (ConnectionError, OSError) as conn_err:
+            add_recent_log(f"⚠️ 偵測到 TWS 通訊中斷 ({conn_err})，進程進入等待重連模式 (20秒後重試)...")
+            logger.warning(f"TWS 通訊中斷: {conn_err}，將於 20 秒後嘗試重連...")
+            try:
+                engine.disconnect()
+            except Exception:
+                pass
+            update_status_file({
+                "is_running": True,
+                "pid": os.getpid(),
+                "last_heartbeat": get_taipei_timestamp(),
+                "tws_connected": False,
+                "circuit_breaker_triggered": circuit_breaker_active,
+                "recent_logs": recent_logs[-10:]
+            })
+            if run_once:
+                break
+            time.sleep(20)
+            continue
+        except KeyboardInterrupt:
+            logger.info("使用者中斷，正在關閉守護進程...")
+            break
+        except Exception as err:
+            logger.error(f"守護進程主循環遭遇非致命例外: {err}", exc_info=True)
+            if run_once:
+                break
+            time.sleep(interval_sec)
+            continue
+
+    # 標記狀態為停止
+    logger.info("正在退出守護進程並更新狀態檔案...")
+    update_status_file({
+        "is_running": False,
+        "pid": None,
+        "last_heartbeat": get_taipei_timestamp(),
+        "tws_connected": False,
+        "circuit_breaker_triggered": circuit_breaker_active,
+        "recent_logs": recent_logs[-10:]
+    })
+    try:
+        engine.disconnect()
+    except Exception:
+        pass
+    logger.info("守護進程已安全離線。")
 
 
 if __name__ == "__main__":
