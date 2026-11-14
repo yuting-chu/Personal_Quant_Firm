@@ -106,7 +106,7 @@ def render(api_key: str = ""):
     st.markdown("---")
 
     # 2. 控制按鈕組
-    btn_c1, btn_c2, btn_c3, btn_c4 = st.columns([1, 1, 1, 1.2])
+    btn_c1, btn_c2, btn_c3, btn_c4, btn_c5 = st.columns([1, 1, 1, 1.1, 1.3])
 
     with btn_c1:
         if not is_active:
@@ -142,7 +142,7 @@ def render(api_key: str = ""):
             st.button("⚪ 已停止", disabled=True, use_container_width=True)
 
     with btn_c3:
-        if st.button("🔄 立即執行單次輪詢", use_container_width=True):
+        if st.button("🔄 立即單次輪詢", use_container_width=True):
             with st.spinner("正在執行單次即時輪詢 (--once)..."):
                 try:
                     res = subprocess.run(
@@ -158,7 +158,7 @@ def render(api_key: str = ""):
                     st.error(f"單次執行異常: {e}")
 
     with btn_c4:
-        if st.button("🚨 緊急撤銷 TWS 全部委託", use_container_width=True):
+        if st.button("🚨 緊急全撤單", use_container_width=True):
             with st.spinner("正在向 TWS 發送全面撤單指令..."):
                 try:
                     engine = get_ibkr_engine(port=7497, client_id=99)
@@ -176,6 +176,21 @@ def render(api_key: str = ""):
                         st.error("無法連線至 TWS (Port 7497)")
                 except Exception as e:
                     st.error(f"撤單失敗: {e}")
+
+    with btn_c5:
+        if st.button("📧 寄送今日日報至 Gmail", use_container_width=True):
+            with st.spinner("正在編譯並寄送今日量化交易與投研郵報..."):
+                try:
+                    from scripts.daily_report_dispatcher import dispatch_daily_report
+                    from modules.time_utils import get_taipei_datestr
+                    d_today = get_taipei_datestr()
+                    ok = dispatch_daily_report(d_today)
+                    if ok:
+                        st.success(f"✅ 已成功寄出 {d_today} 每日量化交易郵報！")
+                    else:
+                        st.error("發送失敗，請確認 .env 之 Gmail 配置。")
+                except Exception as e:
+                    st.error(f"發送異常: {e}")
 
     st.markdown("---")
 

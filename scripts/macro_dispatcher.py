@@ -142,6 +142,26 @@ def run_dispatcher(report_type: str = "morning", custom_gemini_key: str = None, 
 
     print(f"[SUCCESS] 研報已正式入庫！記錄 ID: {rep_id}")
     print(f"[TITLE]   研報標題: {report_title}")
+
+    # 5. 發送總經投研郵件通知至 Gmail
+    try:
+        from modules.email_sender import send_email
+        subj = f"總經研究更新: {report_title}"
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 680px; padding: 20px; background: #ffffff; color: #1e293b; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <h2 style="color: #0f172a; margin-top: 0;">🌐 {report_title}</h2>
+            <div style="background: #f8fafc; padding: 12px; border-left: 4px solid #3b82f6; margin-bottom: 16px; font-weight: bold;">
+                {summary_text}
+            </div>
+            <div style="font-size: 13px; line-height: 1.6; color: #334155; white-space: pre-wrap;">
+{report_markdown}
+            </div>
+        </div>
+        """
+        send_email(subj, html_body, report_markdown)
+    except Exception as mail_err:
+        print(f"[Warning] 發送總經郵件異常: {mail_err}")
+
     print("=" * 65)
     return True
 

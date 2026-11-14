@@ -186,6 +186,24 @@ def update_and_generate_industry_report(persist_db: bool = True) -> Dict[str, An
         except Exception as err:
             logger.warning(f"儲存產業報告失敗: {err}")
 
+        try:
+            from modules.email_sender import send_email
+            subj = f"產業研究更新: 11大板塊與標的價格動態研報 ({get_taipei_datestr()})"
+            html_body = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 680px; padding: 20px; background: #ffffff; color: #1e293b; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <h2 style="color: #0f172a; margin-top: 0;">📊 每日產業與標的價格動態研報</h2>
+                <div style="background: #f8fafc; padding: 12px; border-left: 4px solid #3b82f6; margin-bottom: 16px; font-weight: bold;">
+                    {summary_msg}
+                </div>
+                <div style="font-size: 13px; line-height: 1.6; color: #334155; white-space: pre-wrap;">
+{content_markdown}
+                </div>
+            </div>
+            """
+            send_email(subj, html_body, content_markdown)
+        except Exception as mail_err:
+            logger.warning(f"發送產業研究郵件異常: {mail_err}")
+
     return {
         "success": True,
         "dataframe": df,

@@ -1,0 +1,1518 @@
+{
+  "2026-11-11": [
+    {
+      "exec_id": "000130e8.6af4f336.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7620.25,
+      "shares": 1.0,
+      "time": "2026-11-11 19:16:49",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4f337.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28309.0,
+      "shares": 1.0,
+      "time": "2026-11-11 19:16:52",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    }
+  ],
+  "2026-11-12": [
+    {
+      "exec_id": "000130e8.6af4fb52.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28069.0,
+      "shares": 1.0,
+      "time": "2026-11-12 06:40:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fb55.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7585.5,
+      "shares": 1.0,
+      "time": "2026-11-12 06:40:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fb67.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7587.75,
+      "shares": 1.0,
+      "time": "2026-11-12 06:40:24",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fb68.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28072.75,
+      "shares": 1.0,
+      "time": "2026-11-12 06:40:26",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fc4f.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28316.25,
+      "shares": 1.0,
+      "time": "2026-11-12 06:50:29",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fcc8.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28264.25,
+      "shares": 1.0,
+      "time": "2026-11-12 07:00:35",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fd76.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28328.0,
+      "shares": 1.0,
+      "time": "2026-11-12 07:10:39",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fd86.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7608.75,
+      "shares": 1.0,
+      "time": "2026-11-12 07:12:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fd87.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7609.0,
+      "shares": 1.0,
+      "time": "2026-11-12 07:12:31",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fded.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28221.5,
+      "shares": 1.0,
+      "time": "2026-11-12 07:20:39",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fe0e.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7609.25,
+      "shares": 1.0,
+      "time": "2026-11-12 07:25:09",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fe47.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28261.0,
+      "shares": 1.0,
+      "time": "2026-11-12 07:30:44",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fe55.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7612.75,
+      "shares": 1.0,
+      "time": "2026-11-12 07:32:35",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4fe93.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28279.5,
+      "shares": 1.0,
+      "time": "2026-11-12 07:40:40",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af4ffda.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28491.75,
+      "shares": 1.0,
+      "time": "2026-11-12 08:12:26",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50016.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28591.0,
+      "shares": 1.0,
+      "time": "2026-11-12 08:19:24",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50147.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28525.0,
+      "shares": 1.0,
+      "time": "2026-11-12 08:42:24",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000132b0.6af4f3ac.01.01",
+      "symbol": "UNKNOWN",
+      "side": "BOT",
+      "price": 159.45,
+      "shares": 10000.0,
+      "time": "2026-11-12 08:43:37",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af501b3.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28491.25,
+      "shares": 1.0,
+      "time": "2026-11-12 08:51:14",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af501f0.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28497.5,
+      "shares": 1.0,
+      "time": "2026-11-12 09:00:07",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50254.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28492.5,
+      "shares": 1.0,
+      "time": "2026-11-12 09:17:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50271.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28493.0,
+      "shares": 1.0,
+      "time": "2026-11-12 09:20:26",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af502d5.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28468.0,
+      "shares": 1.0,
+      "time": "2026-11-12 09:30:29",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5031e.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28463.5,
+      "shares": 1.0,
+      "time": "2026-11-12 09:40:45",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5041e.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28491.5,
+      "shares": 1.0,
+      "time": "2026-11-12 10:11:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50422.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28494.75,
+      "shares": 1.0,
+      "time": "2026-11-12 10:11:41",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5047e.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28464.25,
+      "shares": 1.0,
+      "time": "2026-11-12 10:21:44",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af504c5.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28494.0,
+      "shares": 1.0,
+      "time": "2026-11-12 10:32:00",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50509.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28492.75,
+      "shares": 1.0,
+      "time": "2026-11-12 10:47:44",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5050f.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28488.25,
+      "shares": 1.0,
+      "time": "2026-11-12 10:52:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50529.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28379.75,
+      "shares": 1.0,
+      "time": "2026-11-12 11:02:24",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50547.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28401.5,
+      "shares": 1.0,
+      "time": "2026-11-12 11:12:37",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50556.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7624.0,
+      "shares": 1.0,
+      "time": "2026-11-12 11:14:49",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5056a.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28445.75,
+      "shares": 1.0,
+      "time": "2026-11-12 11:22:39",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50589.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28427.25,
+      "shares": 1.0,
+      "time": "2026-11-12 11:32:50",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50597.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28379.5,
+      "shares": 1.0,
+      "time": "2026-11-12 11:42:54",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af505a3.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28376.5,
+      "shares": 1.0,
+      "time": "2026-11-12 11:53:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af505fa.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28393.25,
+      "shares": 1.0,
+      "time": "2026-11-12 12:03:14",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5060b.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28344.5,
+      "shares": 1.0,
+      "time": "2026-11-12 12:13:17",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50619.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28347.25,
+      "shares": 1.0,
+      "time": "2026-11-12 12:23:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50630.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28383.75,
+      "shares": 1.0,
+      "time": "2026-11-12 12:33:31",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5063e.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28316.75,
+      "shares": 1.0,
+      "time": "2026-11-12 12:43:34",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50645.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28349.75,
+      "shares": 1.0,
+      "time": "2026-11-12 12:53:44",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5067a.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28355.25,
+      "shares": 1.0,
+      "time": "2026-11-12 13:03:49",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5067d.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7608.5,
+      "shares": 1.0,
+      "time": "2026-11-12 13:05:14",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50680.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7608.25,
+      "shares": 1.0,
+      "time": "2026-11-12 13:05:24",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5068a.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28399.5,
+      "shares": 1.0,
+      "time": "2026-11-12 13:14:00",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af506b6.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28431.25,
+      "shares": 1.0,
+      "time": "2026-11-12 13:24:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af506e4.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28397.0,
+      "shares": 1.0,
+      "time": "2026-11-12 13:34:17",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af506f0.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28427.5,
+      "shares": 1.0,
+      "time": "2026-11-12 13:44:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af5070d.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28419.75,
+      "shares": 1.0,
+      "time": "2026-11-12 13:54:30",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af50717.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7622.0,
+      "shares": 1.0,
+      "time": "2026-11-12 14:02:45",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af642ce.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28410.0,
+      "shares": 1.0,
+      "time": "2026-11-12 15:10:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64304.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28591.0,
+      "shares": 1.0,
+      "time": "2026-11-12 15:52:14",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64311.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28525.0,
+      "shares": 1.0,
+      "time": "2026-11-12 15:59:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6434e.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7646.5,
+      "shares": 1.0,
+      "time": "2026-11-12 16:11:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64369.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28591.0,
+      "shares": 1.0,
+      "time": "2026-11-12 16:25:34",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64371.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28525.0,
+      "shares": 1.0,
+      "time": "2026-11-12 16:35:54",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6453b.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7624.0,
+      "shares": 1.0,
+      "time": "2026-11-12 20:02:14",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    }
+  ],
+  "2026-11-13": [
+    {
+      "exec_id": "000130e8.6af649ad.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7646.5,
+      "shares": 1.0,
+      "time": "2026-11-13 05:40:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64aa7.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28393.25,
+      "shares": 1.0,
+      "time": "2026-11-13 06:40:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64ab1.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28359.0,
+      "shares": 1.0,
+      "time": "2026-11-13 06:40:11",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64ae1.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7624.0,
+      "shares": 1.0,
+      "time": "2026-11-13 06:44:54",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64b0d.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28295.5,
+      "shares": 1.0,
+      "time": "2026-11-13 06:50:14",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64b19.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7607.5,
+      "shares": 1.0,
+      "time": "2026-11-13 06:52:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64b8c.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28127.5,
+      "shares": 1.0,
+      "time": "2026-11-13 07:00:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64ba6.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7597.25,
+      "shares": 1.0,
+      "time": "2026-11-13 07:02:06",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64bfd.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28045.5,
+      "shares": 1.0,
+      "time": "2026-11-13 07:10:24",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64c1d.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7574.5,
+      "shares": 1.0,
+      "time": "2026-11-13 07:12:09",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64cb4.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27927.25,
+      "shares": 1.0,
+      "time": "2026-11-13 07:20:26",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64cde.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7543.0,
+      "shares": 1.0,
+      "time": "2026-11-13 07:22:14",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64d41.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27764.75,
+      "shares": 1.0,
+      "time": "2026-11-13 07:30:29",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64d59.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7525.25,
+      "shares": 1.0,
+      "time": "2026-11-13 07:32:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64ddb.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27853.5,
+      "shares": 1.0,
+      "time": "2026-11-13 07:40:35",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64df6.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7542.25,
+      "shares": 1.0,
+      "time": "2026-11-13 07:42:21",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64f7d.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7545.5,
+      "shares": 1.0,
+      "time": "2026-11-13 08:07:56",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64f7e.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27815.0,
+      "shares": 1.0,
+      "time": "2026-11-13 08:07:59",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64ff6.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7544.25,
+      "shares": 1.0,
+      "time": "2026-11-13 08:17:59",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af64ff9.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27803.0,
+      "shares": 1.0,
+      "time": "2026-11-13 08:18:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65072.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7534.25,
+      "shares": 1.0,
+      "time": "2026-11-13 08:27:58",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65074.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27726.75,
+      "shares": 1.0,
+      "time": "2026-11-13 08:28:00",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af650f1.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7546.75,
+      "shares": 1.0,
+      "time": "2026-11-13 08:37:59",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af650f4.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27835.75,
+      "shares": 1.0,
+      "time": "2026-11-13 08:38:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65171.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7541.25,
+      "shares": 1.0,
+      "time": "2026-11-13 08:47:58",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65173.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27806.75,
+      "shares": 1.0,
+      "time": "2026-11-13 08:48:00",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af651de.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7535.0,
+      "shares": 1.0,
+      "time": "2026-11-13 08:57:59",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af651e1.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27793.0,
+      "shares": 1.0,
+      "time": "2026-11-13 08:58:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6523d.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7542.0,
+      "shares": 1.0,
+      "time": "2026-11-13 09:08:00",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6523e.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27834.5,
+      "shares": 1.0,
+      "time": "2026-11-13 09:08:02",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af652b2.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27923.0,
+      "shares": 1.0,
+      "time": "2026-11-13 09:18:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af652b3.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7556.75,
+      "shares": 1.0,
+      "time": "2026-11-13 09:18:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65312.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7550.75,
+      "shares": 1.0,
+      "time": "2026-11-13 09:28:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65313.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27882.5,
+      "shares": 1.0,
+      "time": "2026-11-13 09:28:06",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65361.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27917.75,
+      "shares": 1.0,
+      "time": "2026-11-13 09:38:09",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65362.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7556.25,
+      "shares": 1.0,
+      "time": "2026-11-13 09:38:09",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af653b1.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7563.0,
+      "shares": 1.0,
+      "time": "2026-11-13 09:48:06",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af653b2.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27940.25,
+      "shares": 1.0,
+      "time": "2026-11-13 09:48:08",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af653f5.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7560.25,
+      "shares": 1.0,
+      "time": "2026-11-13 09:58:09",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af653f6.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27925.5,
+      "shares": 1.0,
+      "time": "2026-11-13 09:58:09",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65438.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7557.25,
+      "shares": 1.0,
+      "time": "2026-11-13 10:08:10",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65439.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27910.0,
+      "shares": 1.0,
+      "time": "2026-11-13 10:08:12",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6546e.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7554.75,
+      "shares": 1.0,
+      "time": "2026-11-13 10:18:14",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65470.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27897.5,
+      "shares": 1.0,
+      "time": "2026-11-13 10:18:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af654b0.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7554.75,
+      "shares": 1.0,
+      "time": "2026-11-13 10:28:14",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af654b1.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27888.75,
+      "shares": 1.0,
+      "time": "2026-11-13 10:28:16",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af654f8.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7563.5,
+      "shares": 1.0,
+      "time": "2026-11-13 10:38:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af654f9.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27952.25,
+      "shares": 1.0,
+      "time": "2026-11-13 10:38:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65520.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7567.75,
+      "shares": 1.0,
+      "time": "2026-11-13 10:48:16",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65521.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27973.75,
+      "shares": 1.0,
+      "time": "2026-11-13 10:48:18",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65553.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27956.25,
+      "shares": 1.0,
+      "time": "2026-11-13 10:58:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65554.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7567.25,
+      "shares": 1.0,
+      "time": "2026-11-13 10:58:19",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65588.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7575.75,
+      "shares": 1.0,
+      "time": "2026-11-13 11:08:20",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65589.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28017.0,
+      "shares": 1.0,
+      "time": "2026-11-13 11:08:22",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af655d1.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7576.25,
+      "shares": 1.0,
+      "time": "2026-11-13 11:18:24",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af655d2.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28032.25,
+      "shares": 1.0,
+      "time": "2026-11-13 11:18:24",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af655f6.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7578.5,
+      "shares": 1.0,
+      "time": "2026-11-13 11:28:23",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af655f7.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28040.0,
+      "shares": 1.0,
+      "time": "2026-11-13 11:28:25",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65637.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7577.25,
+      "shares": 1.0,
+      "time": "2026-11-13 11:38:29",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65638.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28036.25,
+      "shares": 1.0,
+      "time": "2026-11-13 11:38:29",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6565f.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7573.0,
+      "shares": 1.0,
+      "time": "2026-11-13 11:48:26",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65660.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28009.0,
+      "shares": 1.0,
+      "time": "2026-11-13 11:48:28",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65689.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27982.5,
+      "shares": 1.0,
+      "time": "2026-11-13 11:58:29",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6568a.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7569.75,
+      "shares": 1.0,
+      "time": "2026-11-13 11:58:29",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af656fa.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7578.0,
+      "shares": 1.0,
+      "time": "2026-11-13 12:08:31",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af656fb.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28034.75,
+      "shares": 1.0,
+      "time": "2026-11-13 12:08:33",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65732.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28018.25,
+      "shares": 1.0,
+      "time": "2026-11-13 12:18:34",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65733.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7575.75,
+      "shares": 1.0,
+      "time": "2026-11-13 12:18:34",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65759.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7575.0,
+      "shares": 1.0,
+      "time": "2026-11-13 12:28:36",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6575a.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28014.5,
+      "shares": 1.0,
+      "time": "2026-11-13 12:28:38",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6578c.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28005.0,
+      "shares": 1.0,
+      "time": "2026-11-13 12:38:39",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6578d.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7573.25,
+      "shares": 1.0,
+      "time": "2026-11-13 12:38:39",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af657a3.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7569.0,
+      "shares": 1.0,
+      "time": "2026-11-13 12:48:41",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af657a4.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27989.0,
+      "shares": 1.0,
+      "time": "2026-11-13 12:48:43",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af657cc.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7572.0,
+      "shares": 1.0,
+      "time": "2026-11-13 12:58:44",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af657cd.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 28017.75,
+      "shares": 1.0,
+      "time": "2026-11-13 12:58:44",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6581d.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7579.0,
+      "shares": 1.0,
+      "time": "2026-11-13 13:08:48",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6581e.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 28028.0,
+      "shares": 1.0,
+      "time": "2026-11-13 13:08:50",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6586e.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7559.5,
+      "shares": 1.0,
+      "time": "2026-11-13 13:18:49",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6586f.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27907.0,
+      "shares": 1.0,
+      "time": "2026-11-13 13:18:54",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65881.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7563.25,
+      "shares": 1.0,
+      "time": "2026-11-13 13:28:54",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65882.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27919.25,
+      "shares": 1.0,
+      "time": "2026-11-13 13:28:56",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af658cd.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7551.25,
+      "shares": 1.0,
+      "time": "2026-11-13 13:38:59",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af658ce.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27858.0,
+      "shares": 1.0,
+      "time": "2026-11-13 13:38:59",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65907.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7543.75,
+      "shares": 1.0,
+      "time": "2026-11-13 13:48:59",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af6590f.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27824.5,
+      "shares": 1.0,
+      "time": "2026-11-13 13:49:01",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65946.01.01",
+      "symbol": "MNQ",
+      "side": "SLD",
+      "price": 27934.75,
+      "shares": 1.0,
+      "time": "2026-11-13 13:59:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65947.01.01",
+      "symbol": "MES",
+      "side": "SLD",
+      "price": 7563.75,
+      "shares": 1.0,
+      "time": "2026-11-13 13:59:04",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65954.01.01",
+      "symbol": "MES",
+      "side": "BOT",
+      "price": 7560.5,
+      "shares": 1.0,
+      "time": "2026-11-13 14:09:07",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    },
+    {
+      "exec_id": "000130e8.6af65955.01.01",
+      "symbol": "MNQ",
+      "side": "BOT",
+      "price": 27915.5,
+      "shares": 1.0,
+      "time": "2026-11-13 14:09:09",
+      "realized_pnl": 0.0,
+      "commission": 0.0
+    }
+  ]
+}
