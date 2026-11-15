@@ -499,9 +499,18 @@ def get_weekly_improvements(metrics: Dict[str, Any]) -> List[str]:
 ### 2. 次週重點精進方針 (Next-Week Tactical Roadmap)
 {chr(10).join([f'- {imp}' for imp in improvements])}
 """
-        with open(imp_file, "a", encoding="utf-8") as f:
-            f.write(entry_text)
-        print("✅ 已同步將每週改進方針歸檔至 docs/STRATEGY_IMPROVEMENTS.md")
+        # 檢查是否已存在當日每週覆盤記錄，避免重複追加
+        existing_content = ""
+        if os.path.exists(imp_file):
+            with open(imp_file, "r", encoding="utf-8") as f:
+                existing_content = f.read()
+
+        if f"## 📅 {cur_date} 每週量化交易覆盤" not in existing_content:
+            with open(imp_file, "a", encoding="utf-8") as f:
+                f.write(entry_text)
+            print("✅ 已同步將每週改進方針歸檔至 docs/STRATEGY_IMPROVEMENTS.md")
+        else:
+            print(f"ℹ️ {cur_date} 每週改進方針已存在，略過重複寫入。")
     except Exception as e:
         print(f"[Warning] 寫入 STRATEGY_IMPROVEMENTS.md 失敗: {e}")
 
