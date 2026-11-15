@@ -67,7 +67,9 @@ DAILY_MAX_TRADES_PER_SYMBOL = 4  # 單一標的單日最大開倉次數 (嚴格�
 STALE_TIMEOUT_SECONDS = 1200     # 20 分鐘陳舊訂單超時閾值
 MES_DRIFT_THRESHOLD = 12.0       # /MES 價格偏離 12 點
 MNQ_DRIFT_THRESHOLD = 35.0       # /MNQ 價格偏離 35 點
+MGC_DRIFT_THRESHOLD = 6.0        # /MGC 價格偏離 6.0 點 ($6.0 / oz)
 FX_DRIFT_THRESHOLD = 0.20        # USD/JPY 價格偏離 20 pips (0.20 日圓)
+EUR_DRIFT_THRESHOLD = 0.0020     # EUR/USD 價格偏離 20 pips (0.0020)
 ADX_MIN_THRESHOLD = 20.0         # 15M ADX 趨勢體制濾網 (低於 20 判定為中性震盪，禁止動量突破)
 CLIENT_ID = 401                  # 專用 Daemon Client ID
 
@@ -303,7 +305,12 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                         if curr_mkt and ot.order.lmtPrice:
                             lmt_price = float(ot.order.lmtPrice)
                             distance = abs(curr_mkt - lmt_price)
-                            drift_limit = MES_DRIFT_THRESHOLD if "MES" in sym else (MNQ_DRIFT_THRESHOLD if "MNQ" in sym else FX_DRIFT_THRESHOLD)
+                            drift_limit = (
+                                MES_DRIFT_THRESHOLD if "MES" in sym else
+                                (MNQ_DRIFT_THRESHOLD if "MNQ" in sym else
+                                (MGC_DRIFT_THRESHOLD if "MGC" in sym else
+                                (EUR_DRIFT_THRESHOLD if "EUR" in sym else FX_DRIFT_THRESHOLD)))
+                            )
 
                             # 條件二：現價偏離已拉開超過安全閾值 (市場重心已跑遠)
                             if distance >= drift_limit:
@@ -358,10 +365,19 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                             continue
 
                         entry_price = float(pos.avgCost)
-                        # 各標的 50% 目標閾值與保本保護緩衝 (MES: 目標 22.5 點 / MNQ: 目標 66 點 / USDJPY: 0.50 點)
-                        target_50pct = 11.25 if "MES" in pos_sym else (33.0 if "MNQ" in pos_sym else 0.25)
-                        be_buffer = 1.0 if "MES" in pos_sym else (1.0 if "MNQ" in pos_sym else 0.05)
-                        dec = 3 if "JPY" in pos_sym else 2
+                        # 各標的 50% 目標閾值與保本保護緩衝 (MES: 22.5點/MNQ: 66點/MGC: 20點/USDJPY: 0.50點/EURUSD: 0.0050點)
+                        if "MES" in pos_sym:
+                            target_50pct, be_buffer, dec = 11.25, 1.0, 2
+                        elif "MNQ" in pos_sym:
+                            target_50pct, be_buffer, dec = 33.0, 1.0, 2
+                        elif "MGC" in pos_sym:
+                            target_50pct, be_buffer, dec = 10.0, 1.0, 2
+                        elif "JPY" in pos_sym:
+                            target_50pct, be_buffer, dec = 0.25, 0.05, 3
+                        elif "EUR" in pos_sym:
+                            target_50pct, be_buffer, dec = 0.0025, 0.0005, 5
+                        else:
+                            target_50pct, be_buffer, dec = 10.0, 1.0, 2
 
                         is_long = pos.position > 0
                         if is_long:
@@ -485,6 +501,58 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                                     last_order_times["USDJPY"] = now
                                     daily_trades_counter["USDJPY"] = daily_trades_counter.get("USDJPY", 0) + 1
                                     add_recent_log(f"✅ USD/JPY 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['USDJPY']} 次)")
+
+                # 策略 4: /MGC COMEX 微型黃金期貨 (零 Beta 宏觀實質利率避險)
+                if "/MGC" not in active_symbols and "MGC" not in active_symbols:
+                    if daily_trades_counter.get("/MGC", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
+                        add_recent_log(f"⏸️ /MGC 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
+                    else:
+                        time_since_last = (now - last_order_times.get("/MGC", datetime.min)).total_seconds()
+                        if time_since_last > COOLDOWN_SECONDS:
+                            c_mgc = engine.make_contract("/MGC", "FUT")
+                            t_mgc = engine.ib.reqMktData(c_mgc)
+                            time.sleep(1)
+                            mkt_price = 3880.0
+                            for p in [t_mgc.marketPrice(), t_mgc.last, t_mgc.close, t_mgc.bid, t_mgc.ask]:
+                                if p is not None and not math.isnan(p) and p > 0:
+                                    mkt_price = float(p)
+                                    break
+                            if mkt_price > 0:
+                                entry_p = round(mkt_price - 2.5, 2)
+                                sl_p = round(entry_p - 8.0, 2)
+                                tp_p = round(entry_p + 20.0, 2)
+                                add_recent_log(f"🎯 策略 4 (/MGC 微型黃金): 現價 {mkt_price}，發送限價回調買單 @ {entry_p} (SL {sl_p}, TP {tp_p})")
+                                res = engine.place_bracket_order("/MGC", "BUY", 1, entry_p, sl_p, tp_p, "FUT")
+                                if res.get("success"):
+                                    last_order_times["/MGC"] = now
+                                    daily_trades_counter["/MGC"] = daily_trades_counter.get("/MGC", 0) + 1
+                                    add_recent_log(f"✅ /MGC 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['/MGC']} 次)")
+
+                # 策略 5: EURUSD 倫敦/紐約外匯跨大西洋政策差
+                if "EURUSD" not in active_symbols and "EUR.USD" not in active_symbols:
+                    if daily_trades_counter.get("EURUSD", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
+                        add_recent_log(f"⏸️ EUR/USD 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
+                    else:
+                        time_since_last = (now - last_order_times.get("EURUSD", datetime.min)).total_seconds()
+                        if time_since_last > COOLDOWN_SECONDS:
+                            c_eur = engine.make_contract("EURUSD", "CASH")
+                            t_eur = engine.ib.reqMktData(c_eur)
+                            time.sleep(1)
+                            mkt_price = 1.10500
+                            for p in [t_eur.marketPrice(), t_eur.last, t_eur.close, t_eur.bid, t_eur.ask]:
+                                if p is not None and not math.isnan(p) and p > 0:
+                                    mkt_price = float(p)
+                                    break
+                            if mkt_price > 0:
+                                entry_p = round(mkt_price - 0.0008, 5)
+                                sl_p = round(entry_p - 0.0025, 5)
+                                tp_p = round(entry_p + 0.0050, 5)
+                                add_recent_log(f"🎯 策略 5 (EUR/USD 歐美外匯): 現價 {mkt_price:.5f}，發送限價掛單 @ {entry_p:.5f} (SL {sl_p:.5f}, TP {tp_p:.5f})")
+                                res = engine.place_bracket_order("EURUSD", "BUY", 20000, entry_p, sl_p, tp_p, "CASH")
+                                if res.get("success"):
+                                    last_order_times["EURUSD"] = now
+                                    daily_trades_counter["EURUSD"] = daily_trades_counter.get("EURUSD", 0) + 1
+                                    add_recent_log(f"✅ EUR/USD 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['EURUSD']} 次)")
 
             # 7. 更新 daemon_status.json
             status_data = {

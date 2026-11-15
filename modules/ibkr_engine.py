@@ -175,14 +175,14 @@ class IBKREngine:
         """
         sym_clean = symbol.replace("/", "").strip().upper()
 
-        if sec_type == "FUT" or sym_clean in ["MES", "MNQ"]:
-            # CME 微型指數期貨連續合約
-            c = ContFuture(sym_clean, "CME")
-            self.ib.qualifyContracts(c)
-            return c
-        elif sym_clean in ["MGC", "GC"]:
+        if sym_clean in ["MGC", "GC"]:
             # COMEX 微型黃金期貨連續合約 (MGC: 10 oz, GC: 100 oz)
             c = ContFuture(sym_clean, "COMEX")
+            self.ib.qualifyContracts(c)
+            return c
+        elif sec_type == "FUT" or sym_clean in ["MES", "MNQ"]:
+            # CME 微型指數期貨連續合約
+            c = ContFuture(sym_clean, "CME")
             self.ib.qualifyContracts(c)
             return c
         elif sec_type == "CASH" or sym_clean in ["USDJPY", "EURUSD", "GBPUSD", "AUDUSD"] or "EUR" in sym_clean or "JPY" in sym_clean:
