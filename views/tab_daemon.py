@@ -178,15 +178,23 @@ def render(api_key: str = ""):
                     st.error(f"撤單失敗: {e}")
 
     with btn_c5:
-        if st.button("📧 寄送今日日報至 Gmail", use_container_width=True):
-            with st.spinner("正在編譯並寄送今日量化交易與投研郵報..."):
+        from datetime import datetime
+        is_sun = datetime.now().weekday() == 6
+        btn_label = "📧 寄送每週交易週報至 Gmail" if is_sun else "📧 寄送今日日報至 Gmail"
+        if st.button(btn_label, use_container_width=True):
+            report_kind = "每週量化交易週報" if is_sun else "每日量化交易郵報"
+            with st.spinner(f"正在編譯並寄送 {report_kind}..."):
                 try:
-                    from scripts.daily_report_dispatcher import dispatch_daily_report
                     from modules.time_utils import get_taipei_datestr
                     d_today = get_taipei_datestr()
-                    ok = dispatch_daily_report(d_today)
+                    if is_sun:
+                        from scripts.daily_report_dispatcher import dispatch_weekly_report
+                        ok = dispatch_weekly_report(d_today)
+                    else:
+                        from scripts.daily_report_dispatcher import dispatch_daily_report
+                        ok = dispatch_daily_report(d_today)
                     if ok:
-                        st.success(f"✅ 已成功寄出 {d_today} 每日量化交易郵報！")
+                        st.success(f"✅ 已成功寄出 {d_today} {report_kind}！")
                     else:
                         st.error("發送失敗，請確認 .env 之 Gmail 配置。")
                 except Exception as e:

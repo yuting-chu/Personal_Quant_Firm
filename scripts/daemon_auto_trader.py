@@ -155,17 +155,24 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                 except Exception as e:
                     add_recent_log(f"⚠️ 產業價格掃描異常: {e}")
 
-            # 3.5 每 24 小時定時派發每日量化交易與投研郵報至 Gmail
+            # 3.5 每 24 小時定時派發量化交易與投研郵報至 Gmail (週日自動發送每週總結，平日發送每日日報)
             if (now - last_daily_report_time).total_seconds() > 86400:
                 try:
-                    from scripts.daily_report_dispatcher import dispatch_daily_report
                     cur_d = get_taipei_datestr()
-                    add_recent_log(f"📧 正在生成並派發每 24 小時交易日報 ({cur_d}) 至 Gmail...")
-                    dispatch_daily_report(cur_d)
+                    is_sunday = now.weekday() == 6
+                    if is_sunday:
+                        from scripts.daily_report_dispatcher import dispatch_weekly_report
+                        add_recent_log(f"📧 正在生成並派發【每週量化交易總結週報】({cur_d}) 至 Gmail...")
+                        dispatch_weekly_report(cur_d)
+                        add_recent_log(f"✅ 【週報派發成功】{cur_d} weekly report and trading report 已送達！")
+                    else:
+                        from scripts.daily_report_dispatcher import dispatch_daily_report
+                        add_recent_log(f"📧 正在生成並派發每 24 小時交易日報 ({cur_d}) 至 Gmail...")
+                        dispatch_daily_report(cur_d)
+                        add_recent_log(f"✅ 【日報派發成功】{cur_d} daily report and trading report 已送達！")
                     last_daily_report_time = now
-                    add_recent_log(f"✅ 【郵報派發成功】{cur_d} daily report and trading report 已送達！")
                 except Exception as mail_e:
-                    add_recent_log(f"⚠️ 每日郵報派發異常: {mail_e}")
+                    add_recent_log(f"⚠️ 郵報派發異常: {mail_e}")
 
             # 4. 全域硬熔斷風控檢查
             today_realized = get_today_realized_pnl()
