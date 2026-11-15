@@ -171,7 +171,7 @@ class IBKREngine:
 
     def make_contract(self, symbol: str, sec_type: str = "STK"):
         """
-        合約自動適配器 (美股 ETF, CME 微型期貨, COMEX 微型黃金, 外匯)
+        合約自動適配器 (美股 ETF, CME 微型期貨, COMEX 微型黃金, NYMEX 微型原油, 外匯)
         """
         sym_clean = symbol.replace("/", "").strip().upper()
 
@@ -180,8 +180,13 @@ class IBKREngine:
             c = ContFuture(sym_clean, "COMEX")
             self.ib.qualifyContracts(c)
             return c
-        elif sec_type == "FUT" or sym_clean in ["MES", "MNQ"]:
-            # CME 微型指數期貨連續合約
+        elif sym_clean in ["MCL", "CL"]:
+            # NYMEX 微型原油期貨連續合約 (MCL: 100 桶, CL: 1,000 桶)
+            c = ContFuture(sym_clean, "NYMEX")
+            self.ib.qualifyContracts(c)
+            return c
+        elif sec_type == "FUT" or sym_clean in ["MES", "MNQ", "M2K", "MBT"]:
+            # CME 微型期貨連續合約 (MES: S&P, MNQ: 那指, M2K: 羅素2000, MBT: 比特幣)
             c = ContFuture(sym_clean, "CME")
             self.ib.qualifyContracts(c)
             return c
@@ -190,7 +195,7 @@ class IBKREngine:
             self.ib.qualifyContracts(c)
             return c
         else:
-            # 美股現貨 / ETF
+            # 美股現貨 / ETF (包含 TLT, SPY, QQQ, AAPL 等)
             c = Stock(sym_clean, "SMART", "USD")
             self.ib.qualifyContracts(c)
             return c
