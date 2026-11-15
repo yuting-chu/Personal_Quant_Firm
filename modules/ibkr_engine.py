@@ -171,17 +171,22 @@ class IBKREngine:
 
     def make_contract(self, symbol: str, sec_type: str = "STK"):
         """
-        合約自動適配器 (美股 ETF, CME 微型期貨, 外匯)
+        合約自動適配器 (美股 ETF, CME 微型期貨, COMEX 微型黃金, 外匯)
         """
         sym_clean = symbol.replace("/", "").strip().upper()
 
-        if sec_type == "FUT" or sym_clean in ["MES", "MNQ", "MGC"]:
-            # CME 微型期貨連續合約
+        if sec_type == "FUT" or sym_clean in ["MES", "MNQ"]:
+            # CME 微型指數期貨連續合約
             c = ContFuture(sym_clean, "CME")
             self.ib.qualifyContracts(c)
             return c
-        elif sec_type == "CASH" or "JPY" in sym_clean or sym_clean == "USDJPY":
-            c = Forex("USDJPY")
+        elif sym_clean in ["MGC", "GC"]:
+            # COMEX 微型黃金期貨連續合約 (MGC: 10 oz, GC: 100 oz)
+            c = ContFuture(sym_clean, "COMEX")
+            self.ib.qualifyContracts(c)
+            return c
+        elif sec_type == "CASH" or sym_clean in ["USDJPY", "EURUSD", "GBPUSD", "AUDUSD"] or "EUR" in sym_clean or "JPY" in sym_clean:
+            c = Forex(sym_clean)
             self.ib.qualifyContracts(c)
             return c
         else:
@@ -211,14 +216,25 @@ class IBKREngine:
         try:
             contract = self.make_contract(symbol, sec_type)
             action_clean = action.upper().strip()
+            sym_clean = symbol.replace("/", "").strip().upper()
+
+            # 依資產特性決定報價精度 (FX 5/3位，期貨/股票 2位)
+            if sec_type == "CASH" or sym_clean in ["USDJPY", "EURUSD", "GBPUSD", "AUDUSD"]:
+                dec = 3 if "JPY" in sym_clean else 5
+            else:
+                dec = 2
+
+            entry_p = round(entry_price, dec)
+            tp_p = round(take_profit_price, dec)
+            sl_p = round(stop_loss_price, dec)
 
             # 建立括號單三聯件 (Parent + TP + SL)
             bracket = self.ib.bracketOrder(
                 action=action_clean,
                 quantity=quantity,
-                limitPrice=round(entry_price, 2),
-                takeProfitPrice=round(take_profit_price, 2),
-                stopLossPrice=round(stop_loss_price, 2),
+                limitPrice=entry_p,
+                takeProfitPrice=tp_p,
+                stopLossPrice=sl_p,
                 tif="DAY"
             )
 
@@ -234,7 +250,7 @@ class IBKREngine:
             self.ib.sleep(0.5)
 
             # 記錄到 SQLite 資料庫
-            order_desc = f"{action_clean} {quantity} {symbol} @ 限價 ${entry_price:.2f} (停損: ${stop_loss_price:.2f}, 停利: ${take_profit_price:.2f})"
+            order_desc = f"{action_clean} {quantity} {symbol} @ 限價 ${entry_p} (停損: ${sl_p}, 停利: ${tp_p})"
             insert_trade_log(
                 symbol=symbol,
                 action=order_desc,
