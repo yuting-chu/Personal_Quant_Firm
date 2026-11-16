@@ -77,6 +77,55 @@ EUR_DRIFT_THRESHOLD = 0.0020     # EUR/USD 價格偏離 20 pips (0.0020)
 ADX_MIN_THRESHOLD = 20.0         # 15M ADX 趨勢體制濾網 (低於 20 判定為中性震盪，禁止動量突破)
 CLIENT_ID = 401                  # 專用 Daemon Client ID
 
+# 9 大多元資產計量參數與合約配置中樞 (ATR 動態乘數與資產屬性)
+ASSET_CONFIG = {
+    "/MES": {
+        "yf": "ES=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
+        "k1": 0.6, "k2": 1.5, "k3": 2.5, "min_sl": 8.0, "default_price": 7530.0,
+        "name": "微型標普"
+    },
+    "/MNQ": {
+        "yf": "NQ=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
+        "k1": 0.5, "k2": 1.8, "k3": 2.8, "min_sl": 25.0, "default_price": 27680.0,
+        "name": "微型那指"
+    },
+    "USDJPY": {
+        "yf": "USDJPY=X", "dec": 3, "sec": "CASH", "qty": 10000, "is_index": False,
+        "k1": 0.6, "k2": 1.8, "k3": 2.5, "min_sl": 0.15, "default_price": 159.50,
+        "name": "美元日圓"
+    },
+    "/MGC": {
+        "yf": "GC=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": False,
+        "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 4.0, "default_price": 3870.0,
+        "name": "微型黃金"
+    },
+    "EURUSD": {
+        "yf": "EURUSD=X", "dec": 5, "sec": "CASH", "qty": 20000, "is_index": False,
+        "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.0015, "default_price": 1.1050,
+        "name": "歐美外匯"
+    },
+    "/MCL": {
+        "yf": "CL=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": False,
+        "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.40, "default_price": 88.0,
+        "name": "微型原油"
+    },
+    "TLT": {
+        "yf": "TLT", "dec": 2, "sec": "STK", "qty": 50, "is_index": False,
+        "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.40, "default_price": 79.5,
+        "name": "長天期美債"
+    },
+    "/M2K": {
+        "yf": "RTY=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
+        "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 4.0, "default_price": 2790.0,
+        "name": "微型羅素"
+    },
+    "/MBT": {
+        "yf": "BTC-USD", "dec": 1, "sec": "FUT", "qty": 1, "is_index": False,
+        "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 300.0, "default_price": 65000.0,
+        "name": "微型比特幣"
+    }
+}
+
 # 全域狀態
 running = True
 last_order_times = {}            # {symbol: timestamp}
@@ -86,6 +135,65 @@ current_trading_date = ""        # 交易日記錄 (YYYY-MM-DD)
 trailing_stop_triggered = set()  # 已觸發保本止損之 Order ID 集合
 circuit_breaker_active = False
 recent_logs: List[str] = []
+
+
+def fetch_multi_asset_regimes_and_atr() -> Dict[str, Dict[str, Any]]:
+    """
+    批次計算 9 大資產近 5 日 15 分鐘之 Wilder 14 期 ATR 與 50 期 EMA 趨勢體制
+    回傳字典: {symbol: {'regime': 'BULL'|'BEAR'|'NEUTRAL', 'atr': float, 'price': float, 'ema50': float}}
+    """
+    import yfinance as yf
+    import pandas as pd
+
+    results = {}
+    try:
+        yf_list = [cfg["yf"] for cfg in ASSET_CONFIG.values()]
+        data = yf.download(yf_list, period="5d", interval="15m", group_by="ticker", progress=False)
+
+        for sym, cfg in ASSET_CONFIG.items():
+            yf_t = cfg["yf"]
+            try:
+                df = data[yf_t] if yf_t in data else pd.DataFrame()
+                if df.empty or len(df.dropna()) < 25:
+                    results[sym] = {"regime": "NEUTRAL", "atr": 1.0, "price": cfg["default_price"], "ema50": cfg["default_price"]}
+                    continue
+                high = df["High"].dropna()
+                low = df["Low"].dropna()
+                close = df["Close"].dropna()
+
+                tr1 = high - low
+                tr2 = (high - close.shift(1)).abs()
+                tr3 = (low - close.shift(1)).abs()
+                tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+                atr = float(tr.ewm(alpha=1/14, adjust=False).mean().iloc[-1])
+
+                ema50 = close.ewm(span=50, adjust=False).mean()
+                cur_p = float(close.iloc[-1])
+                cur_ema = float(ema50.iloc[-1])
+                prev_ema = float(ema50.iloc[-4]) if len(ema50) >= 5 else cur_ema
+
+                # 趨勢判定：價格高於 50EMA 且均線向上為多頭；反之為空頭；其餘為震盪中性
+                if cur_p > cur_ema and cur_ema >= prev_ema:
+                    regime = "BULL"
+                elif cur_p < cur_ema and cur_ema <= prev_ema:
+                    regime = "BEAR"
+                else:
+                    regime = "NEUTRAL"
+
+                results[sym] = {
+                    "regime": regime,
+                    "atr": round(atr, 5),
+                    "price": round(cur_p, cfg["dec"]),
+                    "ema50": round(cur_ema, cfg["dec"])
+                }
+            except Exception:
+                results[sym] = {"regime": "NEUTRAL", "atr": 1.0, "price": cfg["default_price"], "ema50": cfg["default_price"]}
+    except Exception as e:
+        logger.warning(f"批次 ATR/Regime 下載異常: {e}")
+        for sym, cfg in ASSET_CONFIG.items():
+            results[sym] = {"regime": "NEUTRAL", "atr": 1.0, "price": cfg["default_price"], "ema50": cfg["default_price"]}
+
+    return results
 
 
 def is_session_open_quiet_period(dt: Optional[datetime] = None) -> bool:
@@ -193,8 +301,10 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
     last_industry_time = datetime.min
     last_daily_report_time = datetime.min
     last_adx_time = datetime.min
+    last_regime_time = datetime.min
     current_mnq_adx = 25.0
     current_sentiment = {}
+    cached_regimes = {}
     risk_multiplier = 1.0
 
     while running:
@@ -230,6 +340,18 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                     add_recent_log(f"✅ 產業與標的價格研報已持久化: {ind_res.get('summary')}")
                 except Exception as e:
                     add_recent_log(f"⚠️ 產業價格掃描異常: {e}")
+
+            # 3.2 定期更新 9 大多元資產 15M ATR 與 50EMA 趨勢體制快照 (每 10 分鐘)
+            if (now - last_regime_time).total_seconds() > 600 or not cached_regimes:
+                try:
+                    cached_regimes = fetch_multi_asset_regimes_and_atr()
+                    last_regime_time = now
+                    bull_cnt = sum(1 for v in cached_regimes.values() if v.get("regime") == "BULL")
+                    bear_cnt = sum(1 for v in cached_regimes.values() if v.get("regime") == "BEAR")
+                    neutral_cnt = sum(1 for v in cached_regimes.values() if v.get("regime") == "NEUTRAL")
+                    add_recent_log(f"📊 9 大資產體制快照更新: 多頭 BULL({bull_cnt}) | 空頭 BEAR({bear_cnt}) | 震盪 NEUTRAL({neutral_cnt})")
+                except Exception as e:
+                    logger.warning(f"ATR/Regime 批次更新失敗: {e}")
 
             # 3.5 每 24 小時定時派發量化交易與投研郵報至 Gmail (週日自動發送每週總結，平日發送每日日報)
             if (now - last_daily_report_time).total_seconds() > 86400:
@@ -396,18 +518,20 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                             target_50pct, be_buffer, dec = 10.0, 1.0, 2
 
                         is_long = pos.position > 0
-                        if is_long:
-                            gain = curr_mkt - entry_price
-                            if gain >= target_50pct:
-                                target_sl = round(entry_price + be_buffer, dec)
-                                for st_trade in matching_stops:
-                                    cur_aux = float(st_trade.order.auxPrice or 0.0)
-                                    if cur_aux < target_sl and st_trade.order.orderId not in trailing_stop_triggered:
-                                        add_recent_log(f"🛡️ 【自適應保本止損】{pos_sym} 現價 {curr_mkt:.2f} 已達 50% 獲利閾值 (+{gain:.2f} >= +{target_50pct})！")
-                                        add_recent_log(f"📈 將停損單 (Order ID {st_trade.order.orderId}) 自 {cur_aux:.2f} 上修至保本價 {target_sl:.2f}，鎖死無風險收益！")
-                                        st_trade.order.auxPrice = target_sl
-                                        engine.ib.placeOrder(st_trade.contract, st_trade.order)
-                                        trailing_stop_triggered.add(st_trade.order.orderId)
+                        gain = (curr_mkt - entry_price) if is_long else (entry_price - curr_mkt)
+                        if gain >= target_50pct:
+                            target_sl = round(entry_price + be_buffer, dec) if is_long else round(entry_price - be_buffer, dec)
+                            for st_trade in matching_stops:
+                                cur_aux = float(st_trade.order.auxPrice or 0.0)
+                                should_adjust = (cur_aux < target_sl) if is_long else (cur_aux > target_sl or cur_aux == 0.0)
+                                if should_adjust and st_trade.order.orderId not in trailing_stop_triggered:
+                                    dir_str = "多單" if is_long else "空單"
+                                    action_str = "上修" if is_long else "下修"
+                                    add_recent_log(f"🛡️ 【自適應保本止損】{pos_sym} ({dir_str}) 現價 {curr_mkt:.{dec}f} 已達 50% 獲利閾值 (+{gain:.{dec}f} >= +{target_50pct:.{dec}f})！")
+                                    add_recent_log(f"📈 將停損單 (Order ID {st_trade.order.orderId}) 自 {cur_aux:.{dec}f} {action_str}至保本價 {target_sl:.{dec}f}，鎖死無風險收益！")
+                                    st_trade.order.auxPrice = target_sl
+                                    engine.ib.placeOrder(st_trade.contract, st_trade.order)
+                                    trailing_stop_triggered.add(st_trade.order.orderId)
                 except Exception as be_err:
                     logger.warning(f"自適應保本止損處理異常: {be_err}")
 
@@ -434,247 +558,99 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
 
                 quiet_period = is_session_open_quiet_period(now)
 
-                # 策略 1: /MES 日內 VWAP 均值回歸
-                if "/MES" not in active_symbols and "MES" not in active_symbols:
-                    if quiet_period:
-                        add_recent_log("⏳ 美股開盤前 10 分鐘靜默期 (22:30-22:40)，暫停 /MES 開倉以規避流動性衝擊與滑價。")
-                    elif daily_trades_counter.get("/MES", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
-                        add_recent_log(f"⏸️ /MES 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
-                    else:
-                        time_since_last = (now - last_order_times.get("/MES", datetime.min)).total_seconds()
-                        if time_since_last > COOLDOWN_SECONDS:
-                            c_mes = engine.make_contract("/MES", "FUT")
-                            t_mes = engine.ib.reqMktData(c_mes)
-                            time.sleep(1)
-                            mkt_price = 7630.0
-                            for p in [t_mes.marketPrice(), t_mes.last, t_mes.close, t_mes.bid, t_mes.ask]:
-                                if p is not None and not math.isnan(p) and p > 0:
-                                    mkt_price = float(p)
-                                    break
-                            if mkt_price > 0:
-                                entry_p = round(mkt_price - 6.0, 2)
-                                sl_p = round(entry_p - 15.0, 2)
-                                tp_p = round(entry_p + 22.5, 2)
-                                add_recent_log(f"🎯 策略 1 (/MES VWAP): 現價 {mkt_price}，發送限價回調買單 @ {entry_p} (SL {sl_p}, TP {tp_p})")
-                                res = engine.place_bracket_order("/MES", "BUY", 1, entry_p, sl_p, tp_p, "FUT")
-                                if res.get("success"):
-                                    last_order_times["/MES"] = now
-                                    daily_trades_counter["/MES"] = daily_trades_counter.get("/MES", 0) + 1
-                                    add_recent_log(f"✅ /MES 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['/MES']} 次)")
+                # 6. 多資產動態 ATR 訂價與多空體制狀態機執行迴圈
+                for sym, cfg in ASSET_CONFIG.items():
+                    sym_clean = sym.replace("/", "").strip()
+                    # 檢查是否已在活動委託或持倉名單
+                    if sym in active_symbols or sym_clean in active_symbols:
+                        continue
 
-                # 策略 2: /MNQ 開盤 15M 動量突破 (整合 15M ADX 體制濾網)
-                if "/MNQ" not in active_symbols and "MNQ" not in active_symbols:
-                    if quiet_period:
-                        add_recent_log("⏳ 美股開盤前 10 分鐘靜默期 (22:30-22:40)，暫停 /MNQ 開倉以規避流動性衝擊與滑價。")
-                    elif current_mnq_adx < ADX_MIN_THRESHOLD:
+                    # 美股指數期貨開盤前 10 分鐘靜默期保護
+                    if cfg.get("is_index") and quiet_period:
+                        add_recent_log(f"⏳ 美股開盤前 10 分鐘靜默期 (22:30-22:40)，暫停 {sym} 開倉以規避流動性衝擊與滑價。")
+                        continue
+
+                    # /MNQ 專屬 15M ADX 體制濾網 (低於閾值判定為震盪，禁止動量追單)
+                    if sym == "/MNQ" and current_mnq_adx < ADX_MIN_THRESHOLD:
                         add_recent_log(f"⚠️ /MNQ 15M ADX ({current_mnq_adx:.1f}) < {ADX_MIN_THRESHOLD}，市場處於無趨勢中性震盪，暫停動量突破開倉！")
-                    elif daily_trades_counter.get("/MNQ", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
-                        add_recent_log(f"⏸️ /MNQ 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
-                    else:
-                        time_since_last = (now - last_order_times.get("/MNQ", datetime.min)).total_seconds()
-                        if time_since_last > COOLDOWN_SECONDS:
-                            c_mnq = engine.make_contract("/MNQ", "FUT")
-                            t_mnq = engine.ib.reqMktData(c_mnq)
-                            time.sleep(1)
-                            mkt_price = 28540.0
-                            for p in [t_mnq.marketPrice(), t_mnq.last, t_mnq.close, t_mnq.bid, t_mnq.ask]:
-                                if p is not None and not math.isnan(p) and p > 0:
-                                    mkt_price = float(p)
-                                    break
-                            if mkt_price > 0:
-                                entry_p = round(mkt_price - 15.0, 2)
-                                sl_p = round(entry_p - 30.0, 2)
-                                tp_p = round(entry_p + 66.0, 2)
-                                add_recent_log(f"🎯 策略 2 (/MNQ 動量): 現價 {mkt_price}，發送限價掛單 @ {entry_p} (SL {sl_p}, TP {tp_p})")
-                                res = engine.place_bracket_order("/MNQ", "BUY", 1, entry_p, sl_p, tp_p, "FUT")
-                                if res.get("success"):
-                                    last_order_times["/MNQ"] = now
-                                    daily_trades_counter["/MNQ"] = daily_trades_counter.get("/MNQ", 0) + 1
-                                    add_recent_log(f"✅ /MNQ 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['/MNQ']} 次)")
+                        continue
 
-                # 策略 3: USD/JPY 倫敦/紐約突破 Carry
-                if "USDJPY" not in active_symbols and "USD.JPY" not in active_symbols:
-                    if daily_trades_counter.get("USDJPY", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
-                        add_recent_log(f"⏸️ USD/JPY 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
-                    else:
-                        time_since_last = (now - last_order_times.get("USDJPY", datetime.min)).total_seconds()
-                        if time_since_last > COOLDOWN_SECONDS:
-                            c_fx = engine.make_contract("USDJPY", "CASH")
-                            t_fx = engine.ib.reqMktData(c_fx)
-                            time.sleep(1)
-                            mkt_price = 159.50
-                            for p in [t_fx.marketPrice(), t_fx.last, t_fx.close, t_fx.bid, t_fx.ask]:
-                                if p is not None and not math.isnan(p) and p > 0:
-                                    mkt_price = float(p)
-                                    break
-                            if mkt_price > 0:
-                                entry_p = round(mkt_price - 0.05, 3)
-                                sl_p = round(entry_p - 0.25, 3)
-                                tp_p = round(entry_p + 0.50, 3)
-                                add_recent_log(f"🎯 策略 3 (USD/JPY Carry): 現價 {mkt_price}，發送限價掛單 @ {entry_p} (SL {sl_p}, TP {tp_p})")
-                                res = engine.place_bracket_order("USDJPY", "BUY", 10000, entry_p, sl_p, tp_p, "CASH")
-                                if res.get("success"):
-                                    last_order_times["USDJPY"] = now
-                                    daily_trades_counter["USDJPY"] = daily_trades_counter.get("USDJPY", 0) + 1
-                                    add_recent_log(f"✅ USD/JPY 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['USDJPY']} 次)")
+                    # 單日交易頻率上限檢查
+                    if daily_trades_counter.get(sym, 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
+                        add_recent_log(f"⏸️ {sym} 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
+                        continue
 
-                # 策略 4: /MGC COMEX 微型黃金期貨 (零 Beta 宏觀實質利率避險)
-                if "/MGC" not in active_symbols and "MGC" not in active_symbols:
-                    if daily_trades_counter.get("/MGC", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
-                        add_recent_log(f"⏸️ /MGC 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
-                    else:
-                        time_since_last = (now - last_order_times.get("/MGC", datetime.min)).total_seconds()
-                        if time_since_last > COOLDOWN_SECONDS:
-                            c_mgc = engine.make_contract("/MGC", "FUT")
-                            t_mgc = engine.ib.reqMktData(c_mgc)
-                            time.sleep(1)
-                            mkt_price = 3880.0
-                            for p in [t_mgc.marketPrice(), t_mgc.last, t_mgc.close, t_mgc.bid, t_mgc.ask]:
-                                if p is not None and not math.isnan(p) and p > 0:
-                                    mkt_price = float(p)
-                                    break
-                            if mkt_price > 0:
-                                entry_p = round(mkt_price - 2.5, 2)
-                                sl_p = round(entry_p - 8.0, 2)
-                                tp_p = round(entry_p + 20.0, 2)
-                                add_recent_log(f"🎯 策略 4 (/MGC 微型黃金): 現價 {mkt_price}，發送限價回調買單 @ {entry_p} (SL {sl_p}, TP {tp_p})")
-                                res = engine.place_bracket_order("/MGC", "BUY", 1, entry_p, sl_p, tp_p, "FUT")
-                                if res.get("success"):
-                                    last_order_times["/MGC"] = now
-                                    daily_trades_counter["/MGC"] = daily_trades_counter.get("/MGC", 0) + 1
-                                    add_recent_log(f"✅ /MGC 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['/MGC']} 次)")
+                    # 冷卻時間檢查
+                    time_since_last = (now - last_order_times.get(sym, datetime.min)).total_seconds()
+                    if time_since_last <= COOLDOWN_SECONDS:
+                        continue
 
-                # 策略 5: EURUSD 倫敦/紐約外匯跨大西洋政策差
-                if "EURUSD" not in active_symbols and "EUR.USD" not in active_symbols:
-                    if daily_trades_counter.get("EURUSD", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
-                        add_recent_log(f"⏸️ EUR/USD 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
-                    else:
-                        time_since_last = (now - last_order_times.get("EURUSD", datetime.min)).total_seconds()
-                        if time_since_last > COOLDOWN_SECONDS:
-                            c_eur = engine.make_contract("EURUSD", "CASH")
-                            t_eur = engine.ib.reqMktData(c_eur)
-                            time.sleep(1)
-                            mkt_price = 1.10500
-                            for p in [t_eur.marketPrice(), t_eur.last, t_eur.close, t_eur.bid, t_eur.ask]:
-                                if p is not None and not math.isnan(p) and p > 0:
-                                    mkt_price = float(p)
-                                    break
-                            if mkt_price > 0:
-                                entry_p = round(mkt_price - 0.0008, 5)
-                                sl_p = round(entry_p - 0.0025, 5)
-                                tp_p = round(entry_p + 0.0050, 5)
-                                add_recent_log(f"🎯 策略 5 (EUR/USD 歐美外匯): 現價 {mkt_price:.5f}，發送限價掛單 @ {entry_p:.5f} (SL {sl_p:.5f}, TP {tp_p:.5f})")
-                                res = engine.place_bracket_order("EURUSD", "BUY", 20000, entry_p, sl_p, tp_p, "CASH")
-                                if res.get("success"):
-                                    last_order_times["EURUSD"] = now
-                                    daily_trades_counter["EURUSD"] = daily_trades_counter.get("EURUSD", 0) + 1
-                                    add_recent_log(f"✅ EUR/USD 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['EURUSD']} 次)")
+                    # 體制判斷 (Regime & Sentiment State Machine)
+                    regime_info = cached_regimes.get(sym, {})
+                    asset_regime = regime_info.get("regime", "NEUTRAL")
+                    atr_val = regime_info.get("atr", 1.0)
+                    sentiment_score = current_sentiment.get("sentiment_score", 0.0)
 
-                # 策略 6: /MCL NYMEX 微型輕原油期貨 (供給側滯脹與能源避險)
-                if "/MCL" not in active_symbols and "MCL" not in active_symbols:
-                    if daily_trades_counter.get("/MCL", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
-                        add_recent_log(f"⏸️ /MCL 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
-                    else:
-                        time_since_last = (now - last_order_times.get("/MCL", datetime.min)).total_seconds()
-                        if time_since_last > COOLDOWN_SECONDS:
-                            c_mcl = engine.make_contract("/MCL", "FUT")
-                            t_mcl = engine.ib.reqMktData(c_mcl)
-                            time.sleep(1)
-                            mkt_price = 88.50
-                            for p in [t_mcl.marketPrice(), t_mcl.last, t_mcl.close, t_mcl.bid, t_mcl.ask]:
-                                if p is not None and not math.isnan(p) and p > 0:
-                                    mkt_price = float(p)
-                                    break
-                            if mkt_price > 0:
-                                entry_p = round(mkt_price - 0.20, 2)
-                                sl_p = round(entry_p - 0.60, 2)
-                                tp_p = round(entry_p + 1.50, 2)
-                                add_recent_log(f"🎯 策略 6 (/MCL 微型原油): 現價 {mkt_price}，發送限價回調買單 @ {entry_p} (SL {sl_p}, TP {tp_p})")
-                                res = engine.place_bracket_order("/MCL", "BUY", 1, entry_p, sl_p, tp_p, "FUT")
-                                if res.get("success"):
-                                    last_order_times["/MCL"] = now
-                                    daily_trades_counter["/MCL"] = daily_trades_counter.get("/MCL", 0) + 1
-                                    add_recent_log(f"✅ /MCL 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['/MCL']} 次)")
+                    # 多空狀態機決定交易方向
+                    action = None
+                    if asset_regime == "BULL":
+                        action = "BUY"
+                    elif asset_regime == "BEAR":
+                        action = "SELL"
+                    else:  # NEUTRAL
+                        if sentiment_score >= 0.20:
+                            action = "BUY"
+                        elif sentiment_score <= -0.20:
+                            action = "SELL"
+                        else:
+                            # 中性震盪且無宏觀方向性，不盲目開倉
+                            continue
 
-                # 策略 7: TLT 美國 20+ 年期公債 ETF (存續期間與衰退通縮避險)
-                if "TLT" not in active_symbols:
-                    if daily_trades_counter.get("TLT", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
-                        add_recent_log(f"⏸️ TLT 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
-                    else:
-                        time_since_last = (now - last_order_times.get("TLT", datetime.min)).total_seconds()
-                        if time_since_last > COOLDOWN_SECONDS:
-                            c_tlt = engine.make_contract("TLT", "STK")
-                            t_tlt = engine.ib.reqMktData(c_tlt)
-                            time.sleep(1)
-                            mkt_price = 79.50
-                            for p in [t_tlt.marketPrice(), t_tlt.last, t_tlt.close, t_tlt.bid, t_tlt.ask]:
-                                if p is not None and not math.isnan(p) and p > 0:
-                                    mkt_price = float(p)
-                                    break
-                            if mkt_price > 0:
-                                entry_p = round(mkt_price - 0.25, 2)
-                                sl_p = round(entry_p - 0.75, 2)
-                                tp_p = round(entry_p + 1.50, 2)
-                                add_recent_log(f"🎯 策略 7 (TLT 長天期美債 ETF): 現價 {mkt_price}，發送限價回調買單 @ {entry_p} (SL {sl_p}, TP {tp_p})")
-                                res = engine.place_bracket_order("TLT", "BUY", 50, entry_p, sl_p, tp_p, "STK")
-                                if res.get("success"):
-                                    last_order_times["TLT"] = now
-                                    daily_trades_counter["TLT"] = daily_trades_counter.get("TLT", 0) + 1
-                                    add_recent_log(f"✅ TLT 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['TLT']} 次)")
+                    # 抓取 TWS 即時或延遲市場現價
+                    c = engine.make_contract(sym, cfg["sec"])
+                    t = engine.ib.reqMktData(c)
+                    time.sleep(0.8)
+                    curr_mkt = None
+                    for p in [t.marketPrice(), t.last, t.close, t.bid, t.ask]:
+                        if p is not None and not math.isnan(p) and p > 0:
+                            curr_mkt = float(p)
+                            break
+                    if not curr_mkt:
+                        curr_mkt = regime_info.get("price", cfg["default_price"])
 
-                # 策略 8: /M2K CME 微型羅素 2000 期貨 (中小型股規模因子 SMB)
-                if "/M2K" not in active_symbols and "M2K" not in active_symbols:
-                    if quiet_period:
-                        add_recent_log("⏳ 美股開盤前 10 分鐘靜默期 (22:30-22:40)，暫停 /M2K 開倉以規避流動性衝擊與滑價。")
-                    elif daily_trades_counter.get("/M2K", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
-                        add_recent_log(f"⏸️ /M2K 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
-                    else:
-                        time_since_last = (now - last_order_times.get("/M2K", datetime.min)).total_seconds()
-                        if time_since_last > COOLDOWN_SECONDS:
-                            c_m2k = engine.make_contract("/M2K", "FUT")
-                            t_m2k = engine.ib.reqMktData(c_m2k)
-                            time.sleep(1)
-                            mkt_price = 2790.0
-                            for p in [t_m2k.marketPrice(), t_m2k.last, t_m2k.close, t_m2k.bid, t_m2k.ask]:
-                                if p is not None and not math.isnan(p) and p > 0:
-                                    mkt_price = float(p)
-                                    break
-                            if mkt_price > 0:
-                                entry_p = round(mkt_price - 3.0, 2)
-                                sl_p = round(entry_p - 6.0, 2)
-                                tp_p = round(entry_p + 15.0, 2)
-                                add_recent_log(f"🎯 策略 8 (/M2K 羅素小型股): 現價 {mkt_price}，發送限價掛單 @ {entry_p} (SL {sl_p}, TP {tp_p})")
-                                res = engine.place_bracket_order("/M2K", "BUY", 1, entry_p, sl_p, tp_p, "FUT")
-                                if res.get("success"):
-                                    last_order_times["/M2K"] = now
-                                    daily_trades_counter["/M2K"] = daily_trades_counter.get("/M2K", 0) + 1
-                                    add_recent_log(f"✅ /M2K 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['/M2K']} 次)")
+                    if not curr_mkt or curr_mkt <= 0:
+                        continue
 
-                # 策略 9: /MBT CME 微型比特幣期貨 (全球 M2 流動性進攻衛星配置)
-                if "/MBT" not in active_symbols and "MBT" not in active_symbols:
-                    if daily_trades_counter.get("/MBT", 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
-                        add_recent_log(f"⏸️ /MBT 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
-                    else:
-                        time_since_last = (now - last_order_times.get("/MBT", datetime.min)).total_seconds()
-                        if time_since_last > COOLDOWN_SECONDS:
-                            c_mbt = engine.make_contract("/MBT", "FUT")
-                            t_mbt = engine.ib.reqMktData(c_mbt)
-                            time.sleep(1)
-                            mkt_price = 65000.0
-                            for p in [t_mbt.marketPrice(), t_mbt.last, t_mbt.close, t_mbt.bid, t_mbt.ask]:
-                                if p is not None and not math.isnan(p) and p > 0:
-                                    mkt_price = float(p)
-                                    break
-                            if mkt_price > 0:
-                                entry_p = round(mkt_price - 250.0, 1)
-                                sl_p = round(entry_p - 600.0, 1)
-                                tp_p = round(entry_p + 1500.0, 1)
-                                add_recent_log(f"🎯 策略 9 (/MBT 微型比特幣): 現價 {mkt_price}，發送限價掛單 @ {entry_p} (SL {sl_p}, TP {tp_p})")
-                                res = engine.place_bracket_order("/MBT", "BUY", 1, entry_p, sl_p, tp_p, "FUT")
-                                if res.get("success"):
-                                    last_order_times["/MBT"] = now
-                                    daily_trades_counter["/MBT"] = daily_trades_counter.get("/MBT", 0) + 1
-                                    add_recent_log(f"✅ /MBT 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter['/MBT']} 次)")
+                    # 依 14-period Wilder ATR 計算動態進場緩衝、停損與停利空間
+                    dec = cfg["dec"]
+                    k1, k2, k3 = cfg["k1"], cfg["k2"], cfg["k3"]
+                    min_sl = cfg["min_sl"]
+
+                    buffer_dist = round(k1 * atr_val, dec)
+                    sl_dist = round(max(k2 * atr_val, min_sl), dec)
+                    tp_dist = round(max(k3 * atr_val, min_sl * 1.5), dec)
+
+                    if action == "BUY":
+                        entry_p = round(curr_mkt - buffer_dist, dec)
+                        sl_p = round(entry_p - sl_dist, dec)
+                        tp_p = round(entry_p + tp_dist, dec)
+                        action_desc = "回調做多 (BULL / 50EMA 上方)" if asset_regime == "BULL" else "宏觀偏多做多 (NEUTRAL 震盪)"
+                    else:  # SELL
+                        entry_p = round(curr_mkt + buffer_dist, dec)
+                        sl_p = round(entry_p + sl_dist, dec)
+                        tp_p = round(entry_p - tp_dist, dec)
+                        action_desc = "反彈做空 (BEAR / 50EMA 下方)" if asset_regime == "BEAR" else "宏觀偏空做空 (NEUTRAL 震盪)"
+
+                    add_recent_log(
+                        f"🎯 [{cfg['name']}] {action} 策略啟動 | 體制: {asset_regime} (15M ATR: {atr_val}) | {action_desc} | "
+                        f"現價 {curr_mkt:.{dec}f} -> 限價 {entry_p:.{dec}f} (SL {sl_p:.{dec}f}, TP {tp_p:.{dec}f})"
+                    )
+
+                    res = engine.place_bracket_order(sym, action, cfg["qty"], entry_p, sl_p, tp_p, cfg["sec"])
+                    if res.get("success"):
+                        last_order_times[sym] = now
+                        daily_trades_counter[sym] = daily_trades_counter.get(sym, 0) + 1
+                        add_recent_log(f"✅ {sym} ({cfg['name']}) 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter[sym]} 次)")
 
             # 7. 更新 daemon_status.json
             status_data = {
@@ -695,6 +671,7 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                 "mnq_adx": round(current_mnq_adx, 2),
                 "daily_trades_counter": dict(daily_trades_counter),
                 "is_quiet_period": is_session_open_quiet_period(now),
+                "asset_regimes": cached_regimes,
                 "recent_logs": recent_logs[-10:]
             }
             update_status_file(status_data)
@@ -735,16 +712,23 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
             time.sleep(interval_sec)
             continue
 
-    # 標記狀態為停止
+    # 標記狀態為停止 (保留體制快照與日誌)
     logger.info("正在退出守護進程並更新狀態檔案...")
-    update_status_file({
-        "is_running": False,
-        "pid": None,
-        "last_heartbeat": get_taipei_timestamp(),
-        "tws_connected": False,
-        "circuit_breaker_triggered": circuit_breaker_active,
-        "recent_logs": recent_logs[-10:]
-    })
+    if "status_data" in locals() and isinstance(status_data, dict):
+        status_data["is_running"] = False
+        status_data["pid"] = None
+        status_data["last_heartbeat"] = get_taipei_timestamp()
+        status_data["tws_connected"] = False
+        update_status_file(status_data)
+    else:
+        update_status_file({
+            "is_running": False,
+            "pid": None,
+            "last_heartbeat": get_taipei_timestamp(),
+            "tws_connected": False,
+            "circuit_breaker_triggered": circuit_breaker_active,
+            "recent_logs": recent_logs[-10:]
+        })
     try:
         engine.disconnect()
     except Exception:

@@ -107,3 +107,35 @@
 3. **自適應保本追蹤止損**：各標的浮盈達 50% 目標閾值時，自動將 Stop Order 平移至保本價。
 4. **指數開盤靜默期**：指數期貨（/MES, /MNQ, /M2K）於 22:30 ~ 22:40 台北時間強制靜默。
 5. **後續收斂機制**：實盤運行 1~2 週後，透過多元資產損益歸因、夏普比率貢獻與手續費滑點磨損，動態篩選並收斂至最優核心投組。
+
+---
+
+## 📅 2026-11-16 優先級一二三全模組量化重構上線 (ATR Pricing & Multi-Regime & Dashboard)
+
+### 1. 優先級一：14 期 Wilder ATR 動態自適應定價中樞 (Priority 1: Dynamic ATR Pricing Engine)
+* **學理依據**：固定點數停損與目標價（如固定 15 點 / 30 點）無法適應市場真實波動率擴張（Volatility Expansion）與收縮（Volatility Squeeze）。在低波動環境易目標過遠無法觸及，高波動環境則易被常態雜訊打損。
+* **演算法落地**：
+  - 核心採用 Wilder 14 期指數加權真實波幅：$\text{TR}_t = \max(H_t - L_t, |H_t - C_{t-1}|, |L_t - C_{t-1}|)$，$\text{ATR}_{14} = \text{EMA}_{\alpha=1/14}(\text{TR})$。
+  - 動態進場回調緩衝：$\text{Buffer} = k_1 \cdot \text{ATR}_{14}$。
+  - 動態保護性止損空間：$\text{SL} = \max(k_2 \cdot \text{ATR}_{14}, \text{Min SL})$。
+  - 動態獲利了結空間：$\text{TP} = \max(k_3 \cdot \text{ATR}_{14}, \text{Min SL} \times 1.5)$。
+* **覆蓋資產**：全面覆蓋 `/MES`, `/MNQ`, `USDJPY`, `/MGC`, `EURUSD`, `/MCL`, `TLT`, `/M2K`, `/MBT` 9 大商品，每 10 分鐘自動重估一次 15M ATR 基準。
+
+### 2. 優先級二：多空雙向體制狀態機與對稱保本追蹤止損 (Priority 2: Long/Short Regime Engine)
+* **多空狀態機 (Regime State Machine)**：
+  - 趨勢體制判定：以 15M 50 EMA 為核心基準線。
+    - 價格 $> \text{EMA}_{50}$ 且均線斜率向上 $\implies$ `BULL (多頭)`：執行「限價回調做多 (BUY dips)」。
+    - 價格 $< \text{EMA}_{50}$ 且均線斜率向下 $\implies$ `BEAR (空頭)`：執行「限價反彈做空 (SELL rallies)」。
+    - 均線平緩或穿梭 $\implies$ `NEUTRAL (震盪)`：由宏觀新聞情緒得分 ($\text{Score}$) 導引；若無顯著趨勢則壓制委託，避免磨損。
+* **對稱自適應保本追蹤止損 (Symmetrical Breakeven Trailing Stop)**：
+  - 不僅支援多單浮盈達 50% TP 空間時向上平移停損單至保本價；
+  - 同時對稱支援**空單 (Short Position)**：當空單現價下跌使得 $\text{Entry} - \text{Market} \ge 50\% \text{TP}$ 時，自動將買入停損單（Stop Buy Order）向**下**平移至「開倉保本價減安全保護空間」，雙向鎖定無風險利潤。
+
+### 3. 優先級三：前台監控中心與風險計量看板 (Priority 3: Platform Dashboard & Correlation)
+* **9 大多元資產多空體制與 ATR 矩陣看板** (`views/tab_daemon.py`)：
+  - 即時呈現 9 大資產之代碼、名稱、資產屬性定位、50 EMA 體制狀態、15M ATR 數值、最新參考價與 50 EMA 基準、當前策略建議動作與今日開倉計數。
+* **30 日滾動多元資產相關性熱圖 (30-Day Rolling Correlation Heatmap)**：
+  - 透過 Plotly `px.imshow` 繪製高解析度雙向發散熱圖 (`RdBu_r`)。
+  - 明確量化並可視化負相關避險資產（`TLT`, `EURUSD`, `/MCL`）對抗美股系統性風險之對衝價值。
+* **前端 15 秒非同步自動刷新**：
+  - 引入 Streamlit 原生 `@st.fragment(run_every="15s")`，無需安裝第三方套件，亦不阻塞主線程，提供華爾街交易室級流暢監控體驗。

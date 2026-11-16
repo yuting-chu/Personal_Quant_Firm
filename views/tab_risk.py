@@ -454,18 +454,18 @@ def render(
         try:
             rets, _ = fetch_risk_market_data()
             corr_df = rets.corr().round(2)
-            fig_corr = ff.create_annotated_heatmap(
-                z=corr_df.values,
-                x=list(corr_df.columns),
-                y=list(corr_df.index),
-                colorscale="RdBu_r",
+            fig_corr = px.imshow(
+                corr_df,
+                text_auto=True,
+                color_continuous_scale="RdBu_r",
                 zmin=-1.0,
-                zmax=1.0
+                zmax=1.0,
+                labels=dict(color="相關係數")
             )
             fig_corr.update_layout(template="plotly_dark", height=320, margin=dict(l=10, r=10, t=25, b=10))
             st.plotly_chart(fig_corr, use_container_width=True)
-        except Exception:
-            st.caption("相關性數據連線更新中...")
+        except Exception as e:
+            st.caption(f"相關性數據連線更新中... ({e})")
 
     # ==========================================
     # 5. 🛡️ 尾部黑天鵝 Put 選擇權對衝精算機
