@@ -179,7 +179,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 
 def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497):
-    global running, circuit_breaker_active
+    global running, circuit_breaker_active, current_trading_date
 
     logger.info("=" * 60)
     logger.info("🚀 Personal Quant Firm 全自動背景監控交易守護進程啟動")
