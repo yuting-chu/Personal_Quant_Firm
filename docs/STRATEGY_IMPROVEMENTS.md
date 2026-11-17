@@ -139,3 +139,45 @@
   - 明確量化並可視化負相關避險資產（`TLT`, `EURUSD`, `/MCL`）對抗美股系統性風險之對衝價值。
 * **前端 15 秒非同步自動刷新**：
   - 引入 Streamlit 原生 `@st.fragment(run_every="15s")`，無需安裝第三方套件，亦不阻塞主線程，提供華爾街交易室級流暢監控體驗。
+
+---
+
+## 📅 2026-11-17 實盤 24 小時審計覆盤與三項高階微觀架構升級 (Microstructure Upgrades)
+
+### 1. 24 小時實盤運作審計
+* **守護進程穩定度**：連續運行 3,532 輪詢循環，在線率 100%，無任何非預期當機退出。
+* **資產淨值 (NAV)**：**$996,647.45 USD**，維持保證金佔用率僅 **1.35%**，風控極度安全。
+* **交易撮合審計**：發送 22 筆委託，撮合成交 6 筆。
+  - `/MCL` 空單精準觸發 TP 獲利平倉（Order 4589，價格 $85.60），**淨獲利 +$113.28 USD**。
+  - `EURUSD` 空頭部位（均價 1.10026）、`TLT` 空頭部位（均價 79.43）持續處於浮動盈利狀態。
+  - 診斷出舊多頭庫存（`/MES`, `/MNQ`）因缺乏沖銷機制與空頭訊號共存，產生鎖倉與淨敞口耗損。
+
+### 2. 今日三大高階微觀架構升級落地
+
+#### 升級一：體制切換遲滯帶 (Hysteresis Band $\pm 0.25 \cdot \text{ATR}$)
+* **痛點**：價格在 50 EMA 附近微幅穿梭（如差距 < 0.3 點）造成體制信號在 BULL 與 BEAR 之間過度抖動與假突破。
+* **解決方案**：
+  $$\text{Regime} = \begin{cases} 
+  \text{BULL}, & \text{if } P_t > \text{EMA}_{50} + 0.25 \cdot \text{ATR}_{14} \text{ and } \text{EMA}_{50} \ge \text{EMA}_{50, t-4} \\
+  \text{BEAR}, & \text{if } P_t < \text{EMA}_{50} - 0.25 \cdot \text{ATR}_{14} \text{ and } \text{EMA}_{50} \le \text{EMA}_{50, t-4} \\
+  \text{NEUTRAL}, & \text{otherwise}
+  \end{cases}$$
+* **效果**：濾除微觀噪訊，使體制切換具備結構性支撐，顯著降低磨損率。
+
+#### 升級二：ADX 動態自適應進場緩衝 ($k_1(\text{ADX})$)
+* **痛點**：固定 $k_1 = 0.6 \cdot \text{ATR}$ 在強單邊趨勢行情下回調要求過深，導致 72.7% 限價單懸空未成交（踏空單邊趨勢）。
+* **解決方案**：
+  - $\text{ADX} \ge 30.0$（強趨勢動量）：自動收縮 $k_1 \leftarrow \max(0.20, k_{1,\text{base}} \times 0.50)$，貼近現價掛單，避免踏空。
+  - $\text{ADX} \le 20.0$（弱震盪整理）：自動放大 $k_1 \leftarrow \min(0.90, k_{1,\text{base}} \times 1.35)$，要求深幅回調提高安全邊際。
+  - $20 < \text{ADX} < 30$：採用標準基準 $k_{1,\text{base}}$。
+
+#### 升級三：淨部位智能沖銷機制 (Position Netting Engine)
+* **痛點**：新體制訊號發送全新相反方向的 Bracket Order，導致帳戶期貨部位多空雙向鎖倉，浪費保證金且未能及時平掉逆勢虧損。
+* **解決方案**：
+  - 當持有多頭庫存且體制轉為 `BEAR` 時，優先撤銷舊掛單並發送市價賣單清空多頭持倉。
+  - 當持有空頭庫存且體制轉為 `BULL` 時，優先撤銷舊掛單並發送市價買單清空空頭持倉。
+  - 順勢部位則由自適應保本追蹤止損機制保護，不重複加倉。
+
+#### 升級四：交易所最小跳動點精確貼合機制 (Minimum Price Variation / Tick Size Rounder)
+* **痛點**：CME / COMEX 各商品有特定跳動點（如 `/MBT` 5.0 點、`/MES` 0.25 點、`/MGC` 0.10 點），小數點位浮點數會觸發 IBKR `Warning 110` 與 `Error 135` 撤單。
+* **解決方案**：在 `ibkr_engine.py` 與 `daemon_auto_trader.py` 內建合約跳動點整數倍規整算法：$P_{\text{order}} = \text{round}(\text{round}(P / \text{tick}) \times \text{tick}, \text{dec})$，全面消除報價不合格報錯。

@@ -43,6 +43,7 @@ if sys.stdout.encoding.lower() != "utf-8":
 from modules.time_utils import get_taipei_timestamp, get_taipei_datestr
 from modules.database import insert_trade_log, get_today_realized_pnl
 from modules.ibkr_engine import get_ibkr_engine
+from ib_insync import MarketOrder
 from modules.sentiment_engine import get_market_sentiment
 from modules.industry_engine import update_and_generate_industry_report
 
@@ -82,47 +83,47 @@ ASSET_CONFIG = {
     "/MES": {
         "yf": "ES=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
         "k1": 0.6, "k2": 1.5, "k3": 2.5, "min_sl": 8.0, "default_price": 7530.0,
-        "name": "微型標普"
+        "name": "微型標普", "tick": 0.25
     },
     "/MNQ": {
         "yf": "NQ=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
         "k1": 0.5, "k2": 1.8, "k3": 2.8, "min_sl": 25.0, "default_price": 27680.0,
-        "name": "微型那指"
+        "name": "微型那指", "tick": 0.25
     },
     "USDJPY": {
         "yf": "USDJPY=X", "dec": 3, "sec": "CASH", "qty": 10000, "is_index": False,
         "k1": 0.6, "k2": 1.8, "k3": 2.5, "min_sl": 0.15, "default_price": 159.50,
-        "name": "美元日圓"
+        "name": "美元日圓", "tick": 0.001
     },
     "/MGC": {
         "yf": "GC=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": False,
         "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 4.0, "default_price": 3870.0,
-        "name": "微型黃金"
+        "name": "微型黃金", "tick": 0.10
     },
     "EURUSD": {
         "yf": "EURUSD=X", "dec": 5, "sec": "CASH", "qty": 20000, "is_index": False,
         "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.0015, "default_price": 1.1050,
-        "name": "歐美外匯"
+        "name": "歐美外匯", "tick": 0.00005
     },
     "/MCL": {
         "yf": "CL=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": False,
         "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.40, "default_price": 88.0,
-        "name": "微型原油"
+        "name": "微型原油", "tick": 0.01
     },
     "TLT": {
         "yf": "TLT", "dec": 2, "sec": "STK", "qty": 50, "is_index": False,
         "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.40, "default_price": 79.5,
-        "name": "長天期美債"
+        "name": "長天期美債", "tick": 0.01
     },
     "/M2K": {
         "yf": "RTY=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
         "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 4.0, "default_price": 2790.0,
-        "name": "微型羅素"
+        "name": "微型羅素", "tick": 0.10
     },
     "/MBT": {
         "yf": "BTC-USD", "dec": 1, "sec": "FUT", "qty": 1, "is_index": False,
         "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 300.0, "default_price": 65000.0,
-        "name": "微型比特幣"
+        "name": "微型比特幣", "tick": 5.0
     }
 }
 
@@ -135,75 +136,6 @@ current_trading_date = ""        # 交易日記錄 (YYYY-MM-DD)
 trailing_stop_triggered = set()  # 已觸發保本止損之 Order ID 集合
 circuit_breaker_active = False
 recent_logs: List[str] = []
-
-
-def fetch_multi_asset_regimes_and_atr() -> Dict[str, Dict[str, Any]]:
-    """
-    批次計算 9 大資產近 5 日 15 分鐘之 Wilder 14 期 ATR 與 50 期 EMA 趨勢體制
-    回傳字典: {symbol: {'regime': 'BULL'|'BEAR'|'NEUTRAL', 'atr': float, 'price': float, 'ema50': float}}
-    """
-    import yfinance as yf
-    import pandas as pd
-
-    results = {}
-    try:
-        yf_list = [cfg["yf"] for cfg in ASSET_CONFIG.values()]
-        data = yf.download(yf_list, period="5d", interval="15m", group_by="ticker", progress=False)
-
-        for sym, cfg in ASSET_CONFIG.items():
-            yf_t = cfg["yf"]
-            try:
-                df = data[yf_t] if yf_t in data else pd.DataFrame()
-                if df.empty or len(df.dropna()) < 25:
-                    results[sym] = {"regime": "NEUTRAL", "atr": 1.0, "price": cfg["default_price"], "ema50": cfg["default_price"]}
-                    continue
-                high = df["High"].dropna()
-                low = df["Low"].dropna()
-                close = df["Close"].dropna()
-
-                tr1 = high - low
-                tr2 = (high - close.shift(1)).abs()
-                tr3 = (low - close.shift(1)).abs()
-                tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-                atr = float(tr.ewm(alpha=1/14, adjust=False).mean().iloc[-1])
-
-                ema50 = close.ewm(span=50, adjust=False).mean()
-                cur_p = float(close.iloc[-1])
-                cur_ema = float(ema50.iloc[-1])
-                prev_ema = float(ema50.iloc[-4]) if len(ema50) >= 5 else cur_ema
-
-                # 趨勢判定：價格高於 50EMA 且均線向上為多頭；反之為空頭；其餘為震盪中性
-                if cur_p > cur_ema and cur_ema >= prev_ema:
-                    regime = "BULL"
-                elif cur_p < cur_ema and cur_ema <= prev_ema:
-                    regime = "BEAR"
-                else:
-                    regime = "NEUTRAL"
-
-                results[sym] = {
-                    "regime": regime,
-                    "atr": round(atr, 5),
-                    "price": round(cur_p, cfg["dec"]),
-                    "ema50": round(cur_ema, cfg["dec"])
-                }
-            except Exception:
-                results[sym] = {"regime": "NEUTRAL", "atr": 1.0, "price": cfg["default_price"], "ema50": cfg["default_price"]}
-    except Exception as e:
-        logger.warning(f"批次 ATR/Regime 下載異常: {e}")
-        for sym, cfg in ASSET_CONFIG.items():
-            results[sym] = {"regime": "NEUTRAL", "atr": 1.0, "price": cfg["default_price"], "ema50": cfg["default_price"]}
-
-    return results
-
-
-def is_session_open_quiet_period(dt: Optional[datetime] = None) -> bool:
-    """
-    美股正規交易時段開盤前 10 分鐘靜默期濾網 (Taipei Time 22:30 ~ 22:40)
-    避開開盤初期瞬間流動性失衡、點差擴大與非理性假突破造成的滑價打損。
-    """
-    if dt is None:
-        dt = datetime.now()
-    return dt.hour == 22 and 30 <= dt.minute < 40
 
 
 def compute_adx_indicator(high_series, low_series, close_series, period: int = 14) -> float:
@@ -233,6 +165,85 @@ def compute_adx_indicator(high_series, low_series, close_series, period: int = 1
     dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, 1e-9)
     adx = dx.ewm(alpha=1/period, adjust=False).mean()
     return float(adx.iloc[-1])
+
+
+def fetch_multi_asset_regimes_and_atr() -> Dict[str, Dict[str, Any]]:
+    """
+    批次計算 9 大資產近 5 日 15 分鐘之 Wilder 14 期 ATR、14 期 ADX 與具備遲滯帶 (Hysteresis Band) 之 50 EMA 體制
+    回傳字典: {symbol: {'regime': 'BULL'|'BEAR'|'NEUTRAL', 'atr': float, 'adx': float, 'price': float, 'ema50': float, 'band': float}}
+    """
+    import yfinance as yf
+    import pandas as pd
+
+    results = {}
+    try:
+        yf_list = [cfg["yf"] for cfg in ASSET_CONFIG.values()]
+        data = yf.download(yf_list, period="5d", interval="15m", group_by="ticker", progress=False)
+
+        for sym, cfg in ASSET_CONFIG.items():
+            yf_t = cfg["yf"]
+            try:
+                df = data[yf_t] if yf_t in data else pd.DataFrame()
+                if df.empty or len(df.dropna()) < 25:
+                    results[sym] = {"regime": "NEUTRAL", "atr": 1.0, "adx": 25.0, "price": cfg["default_price"], "ema50": cfg["default_price"], "band": 0.25}
+                    continue
+                high = df["High"].dropna()
+                low = df["Low"].dropna()
+                close = df["Close"].dropna()
+
+                tr1 = high - low
+                tr2 = (high - close.shift(1)).abs()
+                tr3 = (low - close.shift(1)).abs()
+                tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+                atr = float(tr.ewm(alpha=1/14, adjust=False).mean().iloc[-1])
+
+                ema50 = close.ewm(span=50, adjust=False).mean()
+                cur_p = float(close.iloc[-1])
+                cur_ema = float(ema50.iloc[-1])
+                prev_ema = float(ema50.iloc[-4]) if len(ema50) >= 5 else cur_ema
+
+                # 14 期 ADX 趨勢強度指標
+                adx_val = compute_adx_indicator(high, low, close, period=14)
+
+                # 體制切換遲滯帶 (Hysteresis Band: delta = 0.25 * ATR)
+                delta = 0.25
+                hysteresis_band = delta * atr
+
+                # 趨勢判定：價格實質突破 50EMA + 遲滯帶且均線向上為多頭；
+                # 價格實質跌破 50EMA - 遲滯帶且均線向下為空頭；其餘為震盪/維持中性 (防止均線邊界穿梭噪訊)
+                if cur_p > (cur_ema + hysteresis_band) and cur_ema >= prev_ema:
+                    regime = "BULL"
+                elif cur_p < (cur_ema - hysteresis_band) and cur_ema <= prev_ema:
+                    regime = "BEAR"
+                else:
+                    regime = "NEUTRAL"
+
+                results[sym] = {
+                    "regime": regime,
+                    "atr": round(atr, 5),
+                    "adx": round(adx_val, 2),
+                    "price": round(cur_p, cfg["dec"]),
+                    "ema50": round(cur_ema, cfg["dec"]),
+                    "band": round(hysteresis_band, cfg["dec"])
+                }
+            except Exception:
+                results[sym] = {"regime": "NEUTRAL", "atr": 1.0, "adx": 25.0, "price": cfg["default_price"], "ema50": cfg["default_price"], "band": 0.25}
+    except Exception as e:
+        logger.warning(f"批次 ATR/Regime 下載異常: {e}")
+        for sym, cfg in ASSET_CONFIG.items():
+            results[sym] = {"regime": "NEUTRAL", "atr": 1.0, "adx": 25.0, "price": cfg["default_price"], "ema50": cfg["default_price"], "band": 0.25}
+
+    return results
+
+
+def is_session_open_quiet_period(dt: Optional[datetime] = None) -> bool:
+    """
+    美股正規交易時段開盤前 10 分鐘靜默期濾網 (Taipei Time 22:30 ~ 22:40)
+    避開開盤初期瞬間流動性失衡、點差擴大與非理性假突破造成的滑價打損。
+    """
+    if dt is None:
+        dt = datetime.now()
+    return dt.hour == 22 and 30 <= dt.minute < 40
 
 
 def get_mnq_15m_adx() -> float:
@@ -558,12 +569,28 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
 
                 quiet_period = is_session_open_quiet_period(now)
 
+                # 抓取當前帳戶持倉字典，支援【淨部位智能沖銷 (Netting Engine)】
+                pos_dict = {}
+                try:
+                    current_positions = engine.ib.positions()
+                    for p in current_positions:
+                        if p.position == 0:
+                            continue
+                        p_sym = p.contract.symbol
+                        if p.contract.secType in ["CONTFUT", "FUT"]:
+                            pos_dict[f"/{p_sym}"] = float(p.position)
+                            pos_dict[p_sym] = float(p.position)
+                        elif p.contract.secType == "CASH":
+                            pos_dict[f"{p_sym}{p.contract.currency}"] = float(p.position)
+                            pos_dict[p_sym] = float(p.position)
+                        else:
+                            pos_dict[p_sym] = float(p.position)
+                except Exception as pos_e:
+                    logger.warning(f"持倉字典抓取異常: {pos_e}")
+
                 # 6. 多資產動態 ATR 訂價與多空體制狀態機執行迴圈
                 for sym, cfg in ASSET_CONFIG.items():
                     sym_clean = sym.replace("/", "").strip()
-                    # 檢查是否已在活動委託或持倉名單
-                    if sym in active_symbols or sym_clean in active_symbols:
-                        continue
 
                     # 美股指數期貨開盤前 10 分鐘靜默期保護
                     if cfg.get("is_index") and quiet_period:
@@ -606,6 +633,55 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                             # 中性震盪且無宏觀方向性，不盲目開倉
                             continue
 
+                    # 檢查當前實盤持倉，執行【淨部位智能沖銷機制 (Position Netting)】
+                    curr_pos = pos_dict.get(sym, 0.0) or pos_dict.get(sym_clean, 0.0)
+
+                    # Case 1: 目前持有多頭庫存 (curr_pos > 0)，但體制轉為空頭 (SELL)
+                    if curr_pos > 0 and action == "SELL":
+                        add_recent_log(f"⚠️ 【淨部位智能沖銷】{sym} 體制轉為空頭 (BEAR)，但帳戶持有多頭庫存 {curr_pos} 口/股！")
+                        add_recent_log(f"🛑 立即撤銷 {sym} 現存掛單並送出市價平多單，杜絕逆勢鎖倉！")
+                        for ot in list(engine.ib.openTrades()):
+                            c_s = ot.contract.symbol
+                            if c_s == sym_clean or f"/{c_s}" == sym:
+                                engine.ib.cancelOrder(ot.order)
+                        time.sleep(0.5)
+                        c_close = engine.make_contract(sym, cfg["sec"])
+                        close_order = MarketOrder("SELL", abs(curr_pos))
+                        engine.ib.placeOrder(c_close, close_order)
+                        add_recent_log(f"✅ {sym} 多頭部位平倉單已送出 (Order ID {close_order.orderId})，淨敞口歸零。")
+                        last_order_times[sym] = now
+                        continue
+
+                    # Case 2: 目前持有多頭庫存 (curr_pos > 0)，且體制同為多頭 (BUY)
+                    elif curr_pos > 0 and action == "BUY":
+                        # 已順勢持有，由自適應保本止損保護，不重疊加倉
+                        continue
+
+                    # Case 3: 目前持有空頭庫存 (curr_pos < 0)，但體制轉為多頭 (BUY)
+                    elif curr_pos < 0 and action == "BUY":
+                        add_recent_log(f"⚠️ 【淨部位智能沖銷】{sym} 體制轉為多頭 (BULL)，但帳戶持有空頭庫存 {abs(curr_pos)} 口/股！")
+                        add_recent_log(f"🛑 立即撤銷 {sym} 現存掛單並送出市價平空單，杜絕逆勢鎖倉！")
+                        for ot in list(engine.ib.openTrades()):
+                            c_s = ot.contract.symbol
+                            if c_s == sym_clean or f"/{c_s}" == sym:
+                                engine.ib.cancelOrder(ot.order)
+                        time.sleep(0.5)
+                        c_close = engine.make_contract(sym, cfg["sec"])
+                        close_order = MarketOrder("BUY", abs(curr_pos))
+                        engine.ib.placeOrder(c_close, close_order)
+                        add_recent_log(f"✅ {sym} 空頭部位平倉單已送出 (Order ID {close_order.orderId})，淨敞口歸零。")
+                        last_order_times[sym] = now
+                        continue
+
+                    # Case 4: 目前持有空頭庫存 (curr_pos < 0)，且體制同為空頭 (SELL)
+                    elif curr_pos < 0 and action == "SELL":
+                        # 已順勢持有，由自適應保本止損保護，不重疊加倉
+                        continue
+
+                    # Case 5: curr_pos == 0 (無持倉淨敞口)，若已在活動委託名單中則不重複下單
+                    if sym in active_symbols or sym_clean in active_symbols:
+                        continue
+
                     # 抓取 TWS 即時或延遲市場現價
                     c = engine.make_contract(sym, cfg["sec"])
                     t = engine.ib.reqMktData(c)
@@ -621,28 +697,51 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                     if not curr_mkt or curr_mkt <= 0:
                         continue
 
-                    # 依 14-period Wilder ATR 計算動態進場緩衝、停損與停利空間
+                    # 依 14 期 Wilder ATR 與 ADX 動態計算進場緩衝、停損與停利空間 (Improvement 2)
                     dec = cfg["dec"]
-                    k1, k2, k3 = cfg["k1"], cfg["k2"], cfg["k3"]
+                    k1_base, k2, k3 = cfg["k1"], cfg["k2"], cfg["k3"]
                     min_sl = cfg["min_sl"]
 
-                    buffer_dist = round(k1 * atr_val, dec)
+                    # 自適應 ADX 進場因子動態調節
+                    asset_adx = regime_info.get("adx", 25.0)
+                    if asset_adx >= 30.0:
+                        # 強趨勢動量：壓縮進場緩衝至 0.5 倍 (下限 0.20)，貼近現價避免踏空單邊行情
+                        eff_k1 = max(0.20, round(k1_base * 0.50, 2))
+                        k1_tag = f"強動量貼緊 (ADX {asset_adx:.1f} >= 30, k1={eff_k1})"
+                    elif asset_adx <= 20.0:
+                        # 弱震盪整理：放大進場緩衝至 1.35 倍 (上限 0.90)，要求深幅回調提高安全邊際
+                        eff_k1 = min(0.90, round(k1_base * 1.35, 2))
+                        k1_tag = f"弱震盪深幅 (ADX {asset_adx:.1f} <= 20, k1={eff_k1})"
+                    else:
+                        eff_k1 = k1_base
+                        k1_tag = f"常態體制 (ADX {asset_adx:.1f}, k1={eff_k1})"
+
+                    buffer_dist = round(eff_k1 * atr_val, dec)
                     sl_dist = round(max(k2 * atr_val, min_sl), dec)
                     tp_dist = round(max(k3 * atr_val, min_sl * 1.5), dec)
 
+                    tick_size = cfg.get("tick", 0.01)
+
+                    def _to_tick(val: float) -> float:
+                        if tick_size <= 0:
+                            return round(val, dec)
+                        return round(round(val / tick_size) * tick_size, dec)
+
                     if action == "BUY":
-                        entry_p = round(curr_mkt - buffer_dist, dec)
-                        sl_p = round(entry_p - sl_dist, dec)
-                        tp_p = round(entry_p + tp_dist, dec)
-                        action_desc = "回調做多 (BULL / 50EMA 上方)" if asset_regime == "BULL" else "宏觀偏多做多 (NEUTRAL 震盪)"
+                        raw_entry = curr_mkt - buffer_dist
+                        entry_p = _to_tick(raw_entry)
+                        sl_p = _to_tick(entry_p - sl_dist)
+                        tp_p = _to_tick(entry_p + tp_dist)
+                        action_desc = "回調做多 (BULL / 50EMA+遲滯帶上方)" if asset_regime == "BULL" else "宏觀偏多做多 (NEUTRAL 震盪)"
                     else:  # SELL
-                        entry_p = round(curr_mkt + buffer_dist, dec)
-                        sl_p = round(entry_p + sl_dist, dec)
-                        tp_p = round(entry_p - tp_dist, dec)
-                        action_desc = "反彈做空 (BEAR / 50EMA 下方)" if asset_regime == "BEAR" else "宏觀偏空做空 (NEUTRAL 震盪)"
+                        raw_entry = curr_mkt + buffer_dist
+                        entry_p = _to_tick(raw_entry)
+                        sl_p = _to_tick(entry_p + sl_dist)
+                        tp_p = _to_tick(entry_p - tp_dist)
+                        action_desc = "反彈做空 (BEAR / 50EMA-遲滯帶下方)" if asset_regime == "BEAR" else "宏觀偏空做空 (NEUTRAL 震盪)"
 
                     add_recent_log(
-                        f"🎯 [{cfg['name']}] {action} 策略啟動 | 體制: {asset_regime} (15M ATR: {atr_val}) | {action_desc} | "
+                        f"🎯 [{cfg['name']}] {action} 策略啟動 | 體制: {asset_regime} (ATR: {atr_val}, {k1_tag}) | {action_desc} | "
                         f"現價 {curr_mkt:.{dec}f} -> 限價 {entry_p:.{dec}f} (SL {sl_p:.{dec}f}, TP {tp_p:.{dec}f})"
                     )
 

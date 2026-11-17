@@ -223,15 +223,30 @@ class IBKREngine:
             action_clean = action.upper().strip()
             sym_clean = symbol.replace("/", "").strip().upper()
 
-            # 依資產特性決定報價精度 (FX 5/3位，期貨/股票 2位)
-            if sec_type == "CASH" or sym_clean in ["USDJPY", "EURUSD", "GBPUSD", "AUDUSD"]:
-                dec = 3 if "JPY" in sym_clean else 5
-            else:
-                dec = 2
+            # 依交易所合約微觀結構設定最小跳動點 (Minimum Tick Size) 與報價精度
+            TICK_SPECS = {
+                "MBT": (5.0, 1),
+                "MES": (0.25, 2),
+                "MNQ": (0.25, 2),
+                "M2K": (0.10, 2),
+                "MGC": (0.10, 2),
+                "GC": (0.10, 2),
+                "MCL": (0.01, 2),
+                "CL": (0.01, 2),
+                "TLT": (0.01, 2),
+                "USDJPY": (0.001, 3),
+                "EURUSD": (0.00005, 5)
+            }
+            tick, dec = TICK_SPECS.get(sym_clean, (0.01, 2))
 
-            entry_p = round(entry_price, dec)
-            tp_p = round(take_profit_price, dec)
-            sl_p = round(stop_loss_price, dec)
+            def _to_tick(p: float) -> float:
+                if tick <= 0:
+                    return round(p, dec)
+                return round(round(p / tick) * tick, dec)
+
+            entry_p = _to_tick(entry_price)
+            tp_p = _to_tick(take_profit_price)
+            sl_p = _to_tick(stop_loss_price)
 
             # 建立括號單三聯件 (Parent + TP + SL)
             bracket = self.ib.bracketOrder(

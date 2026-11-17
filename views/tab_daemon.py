@@ -248,7 +248,7 @@ def render(api_key: str = ""):
 
         # 3. 📈 9 大多元資產多空體制與 15M ATR 動態定價看板
         st.subheader("📈 9 大多元資產多空體制與 15M ATR 動態定價看板 (Multi-Asset Regime & ATR Matrix)")
-        st.caption("核心亮點：採用 14 期 Wilder ATR 計算動態進出場緩衝與停損空間；依據 50 EMA 均線斜率判定 BULL (回調做多) / BEAR (反彈做空) / NEUTRAL (中性震盪)")
+        st.caption("核心亮點：引入遲滯帶（Hysteresis Band: ±0.25 ATR）杜絕 50 EMA 穿梭噪訊；整合 14 期 ADX 動態調節進場緩衝 k1；配備淨部位智能沖銷機制（Netting Engine）")
 
         cached_regimes = status_data.get("asset_regimes", {})
         daily_trades = status_data.get("daily_trades_counter", {})
@@ -260,8 +260,10 @@ def render(api_key: str = ""):
             info = cached_regimes.get(sym, {})
             regime = info.get("regime", "NEUTRAL")
             atr = info.get("atr", 0.0)
+            adx = info.get("adx", 25.0)
             price = info.get("price", 0.0)
             ema50 = info.get("ema50", 0.0)
+            band = info.get("band", atr * 0.25 if atr > 0 else 0.0)
             cnt = daily_trades.get(sym, 0)
 
             if regime == "BULL":
@@ -277,7 +279,7 @@ def render(api_key: str = ""):
                 elif sentiment_score <= -0.20:
                     action_sugg = "🔴 宏觀偏空 (SELL)"
                 else:
-                    action_sugg = "⚪ 震盪抑制 (HOLD)"
+                    action_sugg = "⚪ 遲滯帶抑制 (HOLD)"
 
             matrix_rows.append({
                 "標的代碼": sym,
@@ -285,6 +287,8 @@ def render(api_key: str = ""):
                 "資產屬性定位": item["asset_class"],
                 "50 EMA 趨勢體制": reg_display,
                 "15M ATR 波動度": f"{atr:.4f}" if (atr > 0 and atr < 1) else (f"{atr:.2f}" if atr > 0 else "計算中"),
+                "14D ADX 強度": f"{adx:.1f}" if adx > 0 else "25.0",
+                "遲滯帶 (±0.25 ATR)": f"±{band:.4f}" if (band > 0 and band < 1) else (f"±{band:.2f}" if band > 0 else "計算中"),
                 "最新參考價": f"{price:,.4f}" if (price > 0 and price < 2) else (f"{price:,.2f}" if price > 0 else "連線中"),
                 "50 EMA 基準": f"{ema50:,.4f}" if (ema50 > 0 and ema50 < 2) else (f"{ema50:,.2f}" if ema50 > 0 else "連線中"),
                 "當前策略建議動作": action_sugg,
