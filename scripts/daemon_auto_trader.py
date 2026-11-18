@@ -79,51 +79,70 @@ ADX_MIN_THRESHOLD = 20.0         # 15M ADX 趨勢體制濾網 (低於 20 判定�
 CLIENT_ID = 401                  # 專用 Daemon Client ID
 
 # 9 大多元資產計量參數與合約配置中樞 (ATR 動態乘數與資產屬性)
+# 結合方案 2 (時段配額制 Session-Aware Budgeting) 與方案 3 (熱門活躍時段過濾器 Active Hours Filter)
 ASSET_CONFIG = {
     "/MES": {
         "yf": "ES=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
         "k1": 0.6, "k2": 1.5, "k3": 2.5, "min_sl": 8.0, "default_price": 7530.0,
-        "name": "微型標普", "tick": 0.25
+        "name": "微型標普", "tick": 0.25,
+        "allowed_sessions": ["US_RTH"],
+        "session_quotas": {"US_RTH": 3}
     },
     "/MNQ": {
         "yf": "NQ=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
         "k1": 0.5, "k2": 1.8, "k3": 2.8, "min_sl": 25.0, "default_price": 27680.0,
-        "name": "微型那指", "tick": 0.25
+        "name": "微型那指", "tick": 0.25,
+        "allowed_sessions": ["US_RTH"],
+        "session_quotas": {"US_RTH": 3}
     },
     "USDJPY": {
         "yf": "USDJPY=X", "dec": 3, "sec": "CASH", "qty": 10000, "is_index": False,
         "k1": 0.6, "k2": 1.8, "k3": 2.5, "min_sl": 0.15, "default_price": 159.50,
-        "name": "美元日圓", "tick": 0.001
+        "name": "美元日圓", "tick": 0.001,
+        "allowed_sessions": ["LONDON", "US_RTH"],
+        "session_quotas": {"LONDON": 2, "US_RTH": 3}
     },
     "/MGC": {
         "yf": "GC=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": False,
         "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 4.0, "default_price": 3870.0,
-        "name": "微型黃金", "tick": 0.10
+        "name": "微型黃金", "tick": 0.10,
+        "allowed_sessions": ["LONDON", "US_RTH"],
+        "session_quotas": {"LONDON": 2, "US_RTH": 3}
     },
     "EURUSD": {
         "yf": "EURUSD=X", "dec": 5, "sec": "CASH", "qty": 20000, "is_index": False,
         "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.0015, "default_price": 1.1050,
-        "name": "歐美外匯", "tick": 0.00005
+        "name": "歐美外匯", "tick": 0.00005,
+        "allowed_sessions": ["LONDON", "US_RTH"],
+        "session_quotas": {"LONDON": 2, "US_RTH": 3}
     },
     "/MCL": {
         "yf": "CL=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": False,
         "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.40, "default_price": 88.0,
-        "name": "微型原油", "tick": 0.01
+        "name": "微型原油", "tick": 0.01,
+        "allowed_sessions": ["LONDON", "US_RTH"],
+        "session_quotas": {"LONDON": 2, "US_RTH": 3}
     },
     "TLT": {
         "yf": "TLT", "dec": 2, "sec": "STK", "qty": 50, "is_index": False,
         "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.40, "default_price": 79.5,
-        "name": "長天期美債", "tick": 0.01
+        "name": "長天期美債", "tick": 0.01,
+        "allowed_sessions": ["US_RTH"],
+        "session_quotas": {"US_RTH": 3}
     },
     "/M2K": {
         "yf": "RTY=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
         "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 4.0, "default_price": 2790.0,
-        "name": "微型羅素", "tick": 0.10
+        "name": "微型羅素", "tick": 0.10,
+        "allowed_sessions": ["US_RTH"],
+        "session_quotas": {"US_RTH": 3}
     },
     "/MBT": {
         "yf": "BTC-USD", "dec": 1, "sec": "FUT", "qty": 1, "is_index": False,
         "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 300.0, "default_price": 65000.0,
-        "name": "微型比特幣", "tick": 5.0
+        "name": "微型比特幣", "tick": 5.0,
+        "allowed_sessions": ["ASIA", "LONDON", "US_RTH"],
+        "session_quotas": {"ASIA": 1, "LONDON": 2, "US_RTH": 3}
     }
 }
 
@@ -132,7 +151,10 @@ running = True
 last_order_times = {}            # {symbol: timestamp}
 order_submission_times = {}      # {orderId: timestamp}
 daily_trades_counter = {}        # {symbol: count} 記錄當日各標的開倉次數
+session_trades_counter = {}      # {symbol: count} 記錄當前時段各標的開倉次數
 current_trading_date = ""        # 交易日記錄 (YYYY-MM-DD)
+current_session_id = ""          # 交易時段 ID (YYYY-MM-DD_SESSION)
+current_session_name = ""        # 交易時段中文名稱
 trailing_stop_triggered = set()  # 已觸發保本止損之 Order ID 集合
 circuit_breaker_active = False
 recent_logs: List[str] = []
@@ -236,6 +258,53 @@ def fetch_multi_asset_regimes_and_atr() -> Dict[str, Dict[str, Any]]:
     return results
 
 
+def get_current_trading_session(dt: Optional[datetime] = None) -> tuple[str, str, str]:
+    """
+    依據台北時間 (UTC+8) 判斷當前全球交易時段與唯一識別碼 (結合方案 2 & 方案 3)
+    
+    時段劃分:
+    1. ASIA (亞盤時段): 07:00 ~ 15:00 TST (主要由東京/香港主導，美股期貨流動性低)
+    2. LONDON (歐盤時段): 15:00 ~ 21:30 TST (倫敦開盤，外匯與貴金屬原油主戰場)
+    3. US_RTH (美盤熱門時段): 21:30 ~ 05:00 TST (紐約盤前與美股正規交易 RTH，全球量能中樞)
+    4. LULL (結算維護時段): 05:00 ~ 07:00 TST (CME 與全球交易所盤後結算)
+    
+    Returns:
+        (session_code, session_name, session_id)
+        - session_code: "ASIA" | "LONDON" | "US_RTH" | "LULL"
+        - session_name: 中文名稱
+        - session_id: 唯一識別碼 (用於時段配額自動歸零重置)
+    """
+    if dt is None:
+        dt = datetime.now()
+    
+    total_min = dt.hour * 60 + dt.minute
+    
+    if 420 <= total_min < 900:
+        return "ASIA", "亞盤時段 (Asia: 07:00-15:00)", f"{dt.strftime('%Y-%m-%d')}_ASIA"
+    elif 900 <= total_min < 1290:
+        return "LONDON", "歐盤時段 (London: 15:00-21:30)", f"{dt.strftime('%Y-%m-%d')}_LONDON"
+    elif total_min >= 1290 or total_min < 300:
+        # 凌晨 00:00 ~ 05:00 歸屬於前一晚開盤的美盤熱門時段
+        ref_date = (dt - timedelta(days=1)).strftime('%Y-%m-%d') if total_min < 300 else dt.strftime('%Y-%m-%d')
+        return "US_RTH", "美盤熱門時段 (US RTH: 21:30-05:00)", f"{ref_date}_US_RTH"
+    else:
+        return "LULL", "結算維護時段 (Lull: 05:00-07:00)", f"{dt.strftime('%Y-%m-%d')}_LULL"
+
+
+def safe_sleep(sec: float, engine=None):
+    """
+    非阻塞事件循環睡眠: 優先使用 engine.ib.sleep 驅動 asyncio 事件泵，
+    確保 TWS Socket 撤單確認與成交通知以毫秒級即時回調；若未連線則退回 time.sleep。
+    """
+    if engine and getattr(engine, "ib", None) and engine.ib.isConnected():
+        try:
+            engine.ib.sleep(sec)
+            return
+        except Exception:
+            pass
+    time.sleep(sec)
+
+
 def is_session_open_quiet_period(dt: Optional[datetime] = None) -> bool:
     """
     美股正規交易時段開盤前 10 分鐘靜默期濾網 (Taipei Time 22:30 ~ 22:40)
@@ -298,7 +367,7 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 
 def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497):
-    global running, circuit_breaker_active, current_trading_date
+    global running, circuit_breaker_active, current_trading_date, current_session_id, current_session_name
 
     logger.info("=" * 60)
     logger.info("🚀 Personal Quant Firm 全自動背景監控交易守護進程啟動")
@@ -401,7 +470,7 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
             open_trades_count = 0
             if is_connected and not circuit_breaker_active:
                 engine.ib.reqAllOpenOrders()
-                time.sleep(0.5)
+                safe_sleep(0.5, engine)
                 open_trades = engine.ib.openTrades()
                 open_trades_count = len(open_trades)
                 for ot in open_trades:
@@ -432,7 +501,7 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                         # 抓取該標的最新市場價格
                         c = ot.contract
                         ticker = engine.ib.reqMktData(c)
-                        time.sleep(0.8)
+                        safe_sleep(0.8, engine)
                         curr_mkt = None
                         for p in [ticker.marketPrice(), ticker.last, ticker.close, ticker.bid, ticker.ask]:
                             if p is not None and not math.isnan(p) and p > 0:
@@ -458,7 +527,7 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                                 add_recent_log(f"🔄 【陳舊單動態刷新】{sym} 掛單已排隊 {elapsed_min:.1f} 分鐘且現價偏離 {distance:.2f} 點 (閾值 {drift_limit})！")
                                 add_recent_log(f"🛑 撤銷舊掛單 (Order ID {oid} @ {lmt_price})，依最新現價 {curr_mkt} 重新計算佈局...")
                                 engine.ib.cancelOrder(ot.order)
-                                time.sleep(1.0)
+                                safe_sleep(1.0, engine)
                                 if sym in active_symbols:
                                     active_symbols.remove(sym)
                                 if sym.replace("/", "") in active_symbols:
@@ -496,7 +565,7 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                             continue
 
                         ticker = engine.ib.reqMktData(pos.contract)
-                        time.sleep(0.5)
+                        safe_sleep(0.5, engine)
                         curr_mkt = None
                         for p in [ticker.marketPrice(), ticker.last, ticker.close, ticker.bid, ticker.ask]:
                             if p is not None and not math.isnan(p) and p > 0:
@@ -551,12 +620,19 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                 # 請求延遲/即時市場數據
                 engine.ib.reqMarketDataType(3)
 
-                # 重置跨日開倉計數器與保本觸發集合
+                # 重置跨日與跨時段開倉計數器
                 cur_date_str = get_taipei_datestr()
                 if cur_date_str != current_trading_date:
                     daily_trades_counter.clear()
-                    trailing_stop_triggered.clear()
                     current_trading_date = cur_date_str
+
+                sess_code, sess_name, sess_id = get_current_trading_session(now)
+                if sess_id != current_session_id:
+                    session_trades_counter.clear()
+                    trailing_stop_triggered.clear()
+                    current_session_id = sess_id
+                    current_session_name = sess_name
+                    add_recent_log(f"🔄 【時段切換】進入【{sess_name}】(Session ID: {sess_id})！重置時段交易配額，解除鎖定！")
 
                 # 定期更新 /MNQ 15M ADX 體制指標 (每 10 分鐘計算一次)
                 if (now - last_adx_time).total_seconds() > 600:
@@ -592,7 +668,13 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                 for sym, cfg in ASSET_CONFIG.items():
                     sym_clean = sym.replace("/", "").strip()
 
-                    # 美股指數期貨開盤前 10 分鐘靜默期保護
+                    # 方案 3：活躍時段過濾器 (Active Hours Filter)
+                    allowed_sessions = cfg.get("allowed_sessions", ["US_RTH"])
+                    if sess_code not in allowed_sessions:
+                        add_recent_log(f"⏸️ {sym} 非當前【{sess_name}】活躍標的 (策略僅限定在 {allowed_sessions} 開倉)，進入觀望。")
+                        continue
+
+                    # 美股指數期貨開盤前 10 分鐘靜默期保護 (22:30 ~ 22:40)
                     if cfg.get("is_index") and quiet_period:
                         add_recent_log(f"⏳ 美股開盤前 10 分鐘靜默期 (22:30-22:40)，暫停 {sym} 開倉以規避流動性衝擊與滑價。")
                         continue
@@ -602,9 +684,10 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                         add_recent_log(f"⚠️ /MNQ 15M ADX ({current_mnq_adx:.1f}) < {ADX_MIN_THRESHOLD}，市場處於無趨勢中性震盪，暫停動量突破開倉！")
                         continue
 
-                    # 單日交易頻率上限檢查
-                    if daily_trades_counter.get(sym, 0) >= DAILY_MAX_TRADES_PER_SYMBOL:
-                        add_recent_log(f"⏸️ {sym} 今日開倉次數已達上限 ({DAILY_MAX_TRADES_PER_SYMBOL} 次)，啟動頻率節流限制，今日不再開倉。")
+                    # 方案 2：分時段配額上限檢查 (Session-Aware Quota)
+                    session_quota = cfg.get("session_quotas", {}).get(sess_code, 3)
+                    if session_trades_counter.get(sym, 0) >= session_quota:
+                        add_recent_log(f"⏸️ {sym} 已達當前時段【{sess_name}】開倉上限 ({session_quota} 次)，啟動時段頻率節流。")
                         continue
 
                     # 冷卻時間檢查
@@ -644,7 +727,7 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                             c_s = ot.contract.symbol
                             if c_s == sym_clean or f"/{c_s}" == sym:
                                 engine.ib.cancelOrder(ot.order)
-                        time.sleep(0.5)
+                        safe_sleep(0.5, engine)
                         c_close = engine.make_contract(sym, cfg["sec"])
                         close_order = MarketOrder("SELL", abs(curr_pos))
                         engine.ib.placeOrder(c_close, close_order)
@@ -665,7 +748,7 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                             c_s = ot.contract.symbol
                             if c_s == sym_clean or f"/{c_s}" == sym:
                                 engine.ib.cancelOrder(ot.order)
-                        time.sleep(0.5)
+                        safe_sleep(0.5, engine)
                         c_close = engine.make_contract(sym, cfg["sec"])
                         close_order = MarketOrder("BUY", abs(curr_pos))
                         engine.ib.placeOrder(c_close, close_order)
@@ -685,7 +768,7 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                     # 抓取 TWS 即時或延遲市場現價
                     c = engine.make_contract(sym, cfg["sec"])
                     t = engine.ib.reqMktData(c)
-                    time.sleep(0.8)
+                    safe_sleep(0.8, engine)
                     curr_mkt = None
                     for p in [t.marketPrice(), t.last, t.close, t.bid, t.ask]:
                         if p is not None and not math.isnan(p) and p > 0:
@@ -748,8 +831,9 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                     res = engine.place_bracket_order(sym, action, cfg["qty"], entry_p, sl_p, tp_p, cfg["sec"])
                     if res.get("success"):
                         last_order_times[sym] = now
+                        session_trades_counter[sym] = session_trades_counter.get(sym, 0) + 1
                         daily_trades_counter[sym] = daily_trades_counter.get(sym, 0) + 1
-                        add_recent_log(f"✅ {sym} ({cfg['name']}) 括號單發送成功: Order ID {res.get('parent_id')} (今日第 {daily_trades_counter[sym]} 次)")
+                        add_recent_log(f"✅ {sym} ({cfg['name']}) 括號單發送成功: Order ID {res.get('parent_id')} (時段第 {session_trades_counter[sym]}/{session_quota} 次, 今日累計 {daily_trades_counter[sym]} 次)")
 
             # 7. 更新 daemon_status.json
             status_data = {
@@ -768,6 +852,9 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                 "regime_label": current_sentiment.get("regime_label", "中性觀望"),
                 "risk_multiplier": risk_multiplier,
                 "mnq_adx": round(current_mnq_adx, 2),
+                "current_session": sess_name,
+                "current_session_code": sess_code,
+                "session_trades_counter": dict(session_trades_counter),
                 "daily_trades_counter": dict(daily_trades_counter),
                 "is_quiet_period": is_session_open_quiet_period(now),
                 "asset_regimes": cached_regimes,
@@ -779,8 +866,8 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                 add_recent_log("單次測試模式結束 (--once)")
                 break
 
-            # 睡眠等待下一個輪詢循環
-            time.sleep(interval_sec)
+            # 睡眠等待下一個輪詢循環 (優先透過 asyncio event loop safe_sleep)
+            safe_sleep(interval_sec, engine)
 
         except (ConnectionError, OSError) as conn_err:
             add_recent_log(f"⚠️ 偵測到 TWS 通訊中斷 ({conn_err})，進程進入等待重連模式 (20秒後重試)...")

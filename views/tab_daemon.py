@@ -248,11 +248,28 @@ def render(api_key: str = ""):
 
         # 3. 📈 9 大多元資產多空體制與 15M ATR 動態定價看板
         st.subheader("📈 9 大多元資產多空體制與 15M ATR 動態定價看板 (Multi-Asset Regime & ATR Matrix)")
-        st.caption("核心亮點：引入遲滯帶（Hysteresis Band: ±0.25 ATR）杜絕 50 EMA 穿梭噪訊；整合 14 期 ADX 動態調節進場緩衝 k1；配備淨部位智能沖銷機制（Netting Engine）")
-
+        
         cached_regimes = status_data.get("asset_regimes", {})
         daily_trades = status_data.get("daily_trades_counter", {})
+        session_trades = status_data.get("session_trades_counter", {})
+        current_session = status_data.get("current_session", "美盤熱門時段 (US RTH: 21:30-05:00)")
+        current_session_code = status_data.get("current_session_code", "US_RTH")
         sentiment_score = status_data.get("sentiment_score", 0.0)
+
+        st.caption(f"核心亮點：導入時段配額與活躍時段過濾機制（當前時段：**{current_session}**）；遲滯帶（±0.25 ATR）杜絕 EMA 穿梭；14 期 ADX 調節進場緩衝；淨部位智能沖銷")
+
+        # 時段配置字典 (與 daemon_auto_trader 保持同構)
+        SESSION_SPECS = {
+            "/MES": {"allowed": ["US_RTH"], "quotas": {"US_RTH": 3}},
+            "/MNQ": {"allowed": ["US_RTH"], "quotas": {"US_RTH": 3}},
+            "USDJPY": {"allowed": ["LONDON", "US_RTH"], "quotas": {"LONDON": 2, "US_RTH": 3}},
+            "/MGC": {"allowed": ["LONDON", "US_RTH"], "quotas": {"LONDON": 2, "US_RTH": 3}},
+            "EURUSD": {"allowed": ["LONDON", "US_RTH"], "quotas": {"LONDON": 2, "US_RTH": 3}},
+            "/MCL": {"allowed": ["LONDON", "US_RTH"], "quotas": {"LONDON": 2, "US_RTH": 3}},
+            "TLT": {"allowed": ["US_RTH"], "quotas": {"US_RTH": 3}},
+            "/M2K": {"allowed": ["US_RTH"], "quotas": {"US_RTH": 3}},
+            "/MBT": {"allowed": ["ASIA", "LONDON", "US_RTH"], "quotas": {"ASIA": 1, "LONDON": 2, "US_RTH": 3}}
+        }
 
         matrix_rows = []
         for item in ASSET_METADATA:
@@ -265,6 +282,16 @@ def render(api_key: str = ""):
             ema50 = info.get("ema50", 0.0)
             band = info.get("band", atr * 0.25 if atr > 0 else 0.0)
             cnt = daily_trades.get(sym, 0)
+            sess_cnt = session_trades.get(sym, 0)
+
+            spec = SESSION_SPECS.get(sym, {"allowed": ["US_RTH"], "quotas": {"US_RTH": 3}})
+            is_active_session = current_session_code in spec["allowed"]
+            quota = spec["quotas"].get(current_session_code, 3)
+            
+            if is_active_session:
+                sess_display = f"{sess_cnt} / {quota} 次 (活躍中)"
+            else:
+                sess_display = f"休眠 (僅開倉於 {', '.join(spec['allowed'])})"
 
             if regime == "BULL":
                 reg_display = "🟢 多頭 (BULL)"
@@ -292,7 +319,8 @@ def render(api_key: str = ""):
                 "最新參考價": f"{price:,.4f}" if (price > 0 and price < 2) else (f"{price:,.2f}" if price > 0 else "連線中"),
                 "50 EMA 基準": f"{ema50:,.4f}" if (ema50 > 0 and ema50 < 2) else (f"{ema50:,.2f}" if ema50 > 0 else "連線中"),
                 "當前策略建議動作": action_sugg,
-                "今日開倉計數": f"{cnt} / 4 次"
+                "時段開倉配額": sess_display,
+                "今日累計開倉": f"{cnt} 次"
             })
 
         df_matrix = pd.DataFrame(matrix_rows)
