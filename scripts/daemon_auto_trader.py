@@ -79,68 +79,80 @@ ADX_MIN_THRESHOLD = 20.0         # 15M ADX 趨勢體制濾網 (低於 20 判定�
 CLIENT_ID = 401                  # 專用 Daemon Client ID
 
 # 9 大多元資產計量參數與合約配置中樞 (ATR 動態乘數與資產屬性)
-# 結合方案 2 (時段配額制 Session-Aware Budgeting) 與方案 3 (熱門活躍時段過濾器 Active Hours Filter)
+# 整合三大計量模型：1. 波動度平價動態定規模 (Risk Parity) | 2. 組合總 Beta 約束 | 3. 超強單邊雙模突破 (Dual-Mode Entry)
+TARGET_DOLLAR_RISK = 200.0          # 基準單筆交易美元風險預算 ($200 USD，約佔總 NAV 0.02%)
+MAX_TOTAL_INDEX_CONTRACTS = 4       # 美股三大指數期貨 (/MES, /MNQ, /M2K) 同向合併總合約數上限
+
 ASSET_CONFIG = {
     "/MES": {
         "yf": "ES=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
         "k1": 0.6, "k2": 1.5, "k3": 2.5, "min_sl": 8.0, "default_price": 7530.0,
-        "name": "微型標普", "tick": 0.25,
+        "name": "微型標普", "tick": 0.25, "multiplier": 5.0,
+        "q_min": 1, "q_max": 3, "lot_step": 1,
         "allowed_sessions": ["US_RTH"],
         "session_quotas": {"US_RTH": 3}
     },
     "/MNQ": {
         "yf": "NQ=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
         "k1": 0.5, "k2": 1.8, "k3": 2.8, "min_sl": 25.0, "default_price": 27680.0,
-        "name": "微型那指", "tick": 0.25,
+        "name": "微型那指", "tick": 0.25, "multiplier": 2.0,
+        "q_min": 1, "q_max": 2, "lot_step": 1,
         "allowed_sessions": ["US_RTH"],
         "session_quotas": {"US_RTH": 3}
     },
     "USDJPY": {
         "yf": "USDJPY=X", "dec": 3, "sec": "CASH", "qty": 10000, "is_index": False,
         "k1": 0.6, "k2": 1.8, "k3": 2.5, "min_sl": 0.15, "default_price": 159.50,
-        "name": "美元日圓", "tick": 0.001,
+        "name": "美元日圓", "tick": 0.001, "multiplier": 1.0,
+        "q_min": 10000, "q_max": 50000, "lot_step": 10000,
         "allowed_sessions": ["LONDON", "US_RTH"],
         "session_quotas": {"LONDON": 2, "US_RTH": 3}
     },
     "/MGC": {
         "yf": "GC=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": False,
         "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 4.0, "default_price": 3870.0,
-        "name": "微型黃金", "tick": 0.10,
+        "name": "微型黃金", "tick": 0.10, "multiplier": 10.0,
+        "q_min": 1, "q_max": 3, "lot_step": 1,
         "allowed_sessions": ["LONDON", "US_RTH"],
         "session_quotas": {"LONDON": 2, "US_RTH": 3}
     },
     "EURUSD": {
         "yf": "EURUSD=X", "dec": 5, "sec": "CASH", "qty": 20000, "is_index": False,
         "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.0015, "default_price": 1.1050,
-        "name": "歐美外匯", "tick": 0.00005,
+        "name": "歐美外匯", "tick": 0.00005, "multiplier": 1.0,
+        "q_min": 20000, "q_max": 80000, "lot_step": 10000,
         "allowed_sessions": ["LONDON", "US_RTH"],
         "session_quotas": {"LONDON": 2, "US_RTH": 3}
     },
     "/MCL": {
         "yf": "CL=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": False,
         "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.40, "default_price": 88.0,
-        "name": "微型原油", "tick": 0.01,
+        "name": "微型原油", "tick": 0.01, "multiplier": 100.0,
+        "q_min": 1, "q_max": 4, "lot_step": 1,
         "allowed_sessions": ["LONDON", "US_RTH"],
         "session_quotas": {"LONDON": 2, "US_RTH": 3}
     },
     "TLT": {
         "yf": "TLT", "dec": 2, "sec": "STK", "qty": 50, "is_index": False,
         "k1": 0.6, "k2": 2.0, "k3": 3.0, "min_sl": 0.40, "default_price": 79.5,
-        "name": "長天期美債", "tick": 0.01,
+        "name": "長天期美債", "tick": 0.01, "multiplier": 1.0,
+        "q_min": 100, "q_max": 800, "lot_step": 50,
         "allowed_sessions": ["US_RTH"],
         "session_quotas": {"US_RTH": 3}
     },
     "/M2K": {
         "yf": "RTY=F", "dec": 2, "sec": "FUT", "qty": 1, "is_index": True,
         "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 4.0, "default_price": 2790.0,
-        "name": "微型羅素", "tick": 0.10,
+        "name": "微型羅素", "tick": 0.10, "multiplier": 5.0,
+        "q_min": 1, "q_max": 5, "lot_step": 1,
         "allowed_sessions": ["US_RTH"],
         "session_quotas": {"US_RTH": 3}
     },
     "/MBT": {
         "yf": "BTC-USD", "dec": 1, "sec": "FUT", "qty": 1, "is_index": False,
         "k1": 0.6, "k2": 1.8, "k3": 2.8, "min_sl": 300.0, "default_price": 65000.0,
-        "name": "微型比特幣", "tick": 5.0,
+        "name": "微型比特幣", "tick": 5.0, "multiplier": 0.1,
+        "q_min": 1, "q_max": 4, "lot_step": 1,
         "allowed_sessions": ["ASIA", "LONDON", "US_RTH"],
         "session_quotas": {"ASIA": 1, "LONDON": 2, "US_RTH": 3}
     }
@@ -303,6 +315,42 @@ def safe_sleep(sec: float, engine=None):
         except Exception:
             pass
     time.sleep(sec)
+
+
+def compute_volatility_sized_quantity(sym: str, cfg: dict, atr_val: float, risk_budget: float = TARGET_DOLLAR_RISK) -> int:
+    """
+    模型 1：經典風險平價（Equal Dollar Risk Parity / Volatility Sizing）動態頭寸計算公式:
+    Q_raw = Risk_target / (k2 * ATR_14 * Multiplier)
+    
+    學理機制:
+    - 依據市場 14 期 ATR 實時波動度反比計算頭寸，消除 /MNQ 對帳戶損益的過度綁架；
+    - 使 9 大資產單筆止損承受之美元風險嚴格錨定在 $200 USD 附近；
+    - 結合 Q_min / Q_max 邊界截斷約束與品種批量跳動取整 (lot_step)。
+    """
+    k2 = cfg.get("k2", 1.8)
+    multiplier = cfg.get("multiplier", 1.0)
+    
+    # 日圓外匯 USDJPY 匯率點值換算 (以 160.0 日圓基準估算)
+    if sym == "USDJPY":
+        unit_risk = (k2 * atr_val) / 160.0
+    else:
+        unit_risk = k2 * atr_val * multiplier
+        
+    if unit_risk <= 0:
+        return int(cfg.get("qty", 1))
+        
+    q_raw = risk_budget / unit_risk
+    lot_step = cfg.get("lot_step", 1)
+    
+    if lot_step > 1:
+        q_calc = int(round(q_raw / lot_step) * lot_step)
+    else:
+        q_calc = int(round(q_raw))
+        
+    q_min = cfg.get("q_min", 1)
+    q_max = cfg.get("q_max", 5)
+    
+    return max(q_min, min(q_max, q_calc))
 
 
 def is_session_open_quiet_period(dt: Optional[datetime] = None) -> bool:
@@ -765,6 +813,18 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                     if sym in active_symbols or sym_clean in active_symbols:
                         continue
 
+                    # 模型 2：美股三大指數期貨 (/MES, /MNQ, /M2K) 組合總 Beta 敞口約束
+                    if cfg.get("is_index"):
+                        total_same_dir_index_qty = 0.0
+                        for idx_sym in ["/MES", "/MNQ", "/M2K"]:
+                            pos_val = pos_dict.get(idx_sym, 0.0) or pos_dict.get(idx_sym.replace("/", ""), 0.0)
+                            if (action == "BUY" and pos_val > 0) or (action == "SELL" and pos_val < 0):
+                                total_same_dir_index_qty += abs(pos_val)
+
+                        if total_same_dir_index_qty >= MAX_TOTAL_INDEX_CONTRACTS:
+                            add_recent_log(f"🛡️ 【組合 Beta 風控約束】美股三大指數同向持倉已達 {total_same_dir_index_qty:.0f} 口 (上限 {MAX_TOTAL_INDEX_CONTRACTS} 口)，暫停 {sym} 開立同向新單！")
+                            continue
+
                     # 抓取 TWS 即時或延遲市場現價
                     c = engine.make_contract(sym, cfg["sec"])
                     t = engine.ib.reqMktData(c)
@@ -785,14 +845,19 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                     k1_base, k2, k3 = cfg["k1"], cfg["k2"], cfg["k3"]
                     min_sl = cfg["min_sl"]
 
-                    # 自適應 ADX 進場因子動態調節
+                    # 模型 3：自適應 ADX 進場因子與超強單邊雙模突破 (Dual-Mode Entry)
                     asset_adx = regime_info.get("adx", 25.0)
-                    if asset_adx >= 30.0:
-                        # 強趨勢動量：壓縮進場緩衝至 0.5 倍 (下限 0.20)，貼近現價避免踏空單邊行情
+                    ema_val = regime_info.get("ema50", curr_mkt)
+                    is_super_momentum = (asset_adx >= 32.0 and abs(curr_mkt - ema_val) >= 1.0 * atr_val) or (sym == "/MNQ" and current_mnq_adx >= 32.0)
+
+                    if is_super_momentum:
+                        # 超強單邊噴發/破位：啟動動態突破雙模，壓縮進場緩衝至 0.15 ATR，激進跟隨避免踏空
+                        eff_k1 = 0.15
+                        k1_tag = f"🔥 超強單邊動態突破 (ADX {asset_adx:.1f}, k1=0.15)"
+                    elif asset_adx >= 30.0:
                         eff_k1 = max(0.20, round(k1_base * 0.50, 2))
-                        k1_tag = f"強動量貼緊 (ADX {asset_adx:.1f} >= 30, k1={eff_k1})"
+                        k1_tag = f"⚡ 強動量貼緊 (ADX {asset_adx:.1f} >= 30, k1={eff_k1})"
                     elif asset_adx <= 20.0:
-                        # 弱震盪整理：放大進場緩衝至 1.35 倍 (上限 0.90)，要求深幅回調提高安全邊際
                         eff_k1 = min(0.90, round(k1_base * 1.35, 2))
                         k1_tag = f"弱震盪深幅 (ADX {asset_adx:.1f} <= 20, k1={eff_k1})"
                     else:
@@ -802,6 +867,9 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                     buffer_dist = round(eff_k1 * atr_val, dec)
                     sl_dist = round(max(k2 * atr_val, min_sl), dec)
                     tp_dist = round(max(k3 * atr_val, min_sl * 1.5), dec)
+
+                    # 模型 1：波動度平價動態定規模 (Risk Parity Volatility Sizing)
+                    order_qty = compute_volatility_sized_quantity(sym, cfg, atr_val, TARGET_DOLLAR_RISK)
 
                     tick_size = cfg.get("tick", 0.01)
 
@@ -824,16 +892,16 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                         action_desc = "反彈做空 (BEAR / 50EMA-遲滯帶下方)" if asset_regime == "BEAR" else "宏觀偏空做空 (NEUTRAL 震盪)"
 
                     add_recent_log(
-                        f"🎯 [{cfg['name']}] {action} 策略啟動 | 體制: {asset_regime} (ATR: {atr_val}, {k1_tag}) | {action_desc} | "
+                        f"🎯 [{cfg['name']}] {action} 策略啟動 | 規模: {order_qty} 單位 | 體制: {asset_regime} (ATR: {atr_val}, {k1_tag}) | {action_desc} | "
                         f"現價 {curr_mkt:.{dec}f} -> 限價 {entry_p:.{dec}f} (SL {sl_p:.{dec}f}, TP {tp_p:.{dec}f})"
                     )
 
-                    res = engine.place_bracket_order(sym, action, cfg["qty"], entry_p, sl_p, tp_p, cfg["sec"])
+                    res = engine.place_bracket_order(sym, action, order_qty, entry_p, sl_p, tp_p, cfg["sec"])
                     if res.get("success"):
                         last_order_times[sym] = now
                         session_trades_counter[sym] = session_trades_counter.get(sym, 0) + 1
                         daily_trades_counter[sym] = daily_trades_counter.get(sym, 0) + 1
-                        add_recent_log(f"✅ {sym} ({cfg['name']}) 括號單發送成功: Order ID {res.get('parent_id')} (時段第 {session_trades_counter[sym]}/{session_quota} 次, 今日累計 {daily_trades_counter[sym]} 次)")
+                        add_recent_log(f"✅ {sym} ({cfg['name']}) 括號單發送成功: {action} {order_qty} 單位 @ {entry_p:.{dec}f} (Order ID {res.get('parent_id')}, 時段第 {session_trades_counter[sym]}/{session_quota} 次, 今日累計 {daily_trades_counter[sym]} 次)")
 
             # 7. 更新 daemon_status.json
             status_data = {

@@ -256,7 +256,7 @@ def render(api_key: str = ""):
         current_session_code = status_data.get("current_session_code", "US_RTH")
         sentiment_score = status_data.get("sentiment_score", 0.0)
 
-        st.caption(f"核心亮點：導入時段配額與活躍時段過濾機制（當前時段：**{current_session}**）；遲滯帶（±0.25 ATR）杜絕 EMA 穿梭；14 期 ADX 調節進場緩衝；淨部位智能沖銷")
+        st.caption(f"核心亮點：三大計量升級（1. 波動度平價動態規模 Risk Parity: 錨定單筆風險 $200 USD；2. 股指期貨組合 Beta 總口數約束 ≤ 4 口；3. 超強單邊雙模突破 Dual-Mode Entry）；當前時段：**{current_session}**")
 
         # 時段配置字典 (與 daemon_auto_trader 保持同構)
         SESSION_SPECS = {
@@ -271,6 +271,12 @@ def render(api_key: str = ""):
             "/MBT": {"allowed": ["ASIA", "LONDON", "US_RTH"], "quotas": {"ASIA": 1, "LONDON": 2, "US_RTH": 3}}
         }
 
+        try:
+            from scripts.daemon_auto_trader import ASSET_CONFIG, compute_volatility_sized_quantity
+        except Exception:
+            ASSET_CONFIG = {}
+            compute_volatility_sized_quantity = lambda s, c, a: 1
+
         matrix_rows = []
         for item in ASSET_METADATA:
             sym = item["sym"]
@@ -283,6 +289,9 @@ def render(api_key: str = ""):
             band = info.get("band", atr * 0.25 if atr > 0 else 0.0)
             cnt = daily_trades.get(sym, 0)
             sess_cnt = session_trades.get(sym, 0)
+
+            cfg_item = ASSET_CONFIG.get(sym, {})
+            sized_qty = compute_volatility_sized_quantity(sym, cfg_item, atr if atr > 0 else 1.0)
 
             spec = SESSION_SPECS.get(sym, {"allowed": ["US_RTH"], "quotas": {"US_RTH": 3}})
             is_active_session = current_session_code in spec["allowed"]
@@ -313,6 +322,7 @@ def render(api_key: str = ""):
                 "資產名稱": item["name"],
                 "資產屬性定位": item["asset_class"],
                 "50 EMA 趨勢體制": reg_display,
+                "風平動態規模": f"{sized_qty} 單位" if (atr > 0) else "計算中",
                 "15M ATR 波動度": f"{atr:.4f}" if (atr > 0 and atr < 1) else (f"{atr:.2f}" if atr > 0 else "計算中"),
                 "14D ADX 強度": f"{adx:.1f}" if adx > 0 else "25.0",
                 "遲滯帶 (±0.25 ATR)": f"±{band:.4f}" if (band > 0 and band < 1) else (f"±{band:.2f}" if band > 0 else "計算中"),
