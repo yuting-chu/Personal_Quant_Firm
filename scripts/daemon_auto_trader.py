@@ -414,6 +414,24 @@ signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
 
+def get_last_industry_report_time() -> datetime:
+    """查詢 SQLite 中最新一筆產業研報時戳，防止進程重啟立即連發郵件"""
+    try:
+        db_path = os.path.join(PROJECT_ROOT, "modules", "quant_firm.db")
+        if os.path.exists(db_path):
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT timestamp FROM macro_daily_reports WHERE report_type = '每日產業與標的價格動態研報' ORDER BY id DESC LIMIT 1")
+            row = cur.fetchone()
+            conn.close()
+            if row and row[0]:
+                return datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+    except Exception as e:
+        logger.warning(f"讀取上次產業研報時間失敗: {e}")
+    return datetime.min
+
+
 def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497):
     global running, circuit_breaker_active, current_trading_date, current_session_id, current_session_name
 
@@ -423,11 +441,20 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
     logger.info(f"風控規範: 單日最大回撤熔斷 {-MAX_DAILY_LOSS_PCT*100}% | 冷卻期 {COOLDOWN_SECONDS} 秒")
     logger.info("=" * 60)
 
+    # 讀取持久化發信狀態（防重發鎖）
+    last_daily_report_date = ""
+    if os.path.exists(STATUS_FILE):
+        try:
+            with open(STATUS_FILE, "r", encoding="utf-8") as f:
+                _old_status = json.load(f)
+                last_daily_report_date = _old_status.get("last_daily_report_date", "")
+        except Exception:
+            pass
+
     engine = get_ibkr_engine(port=port, client_id=CLIENT_ID)
     iterations = 0
     last_sentiment_time = datetime.min
-    last_industry_time = datetime.min
-    last_daily_report_time = datetime.min
+    last_industry_time = get_last_industry_report_time()
     last_adx_time = datetime.min
     last_regime_time = datetime.min
     current_mnq_adx = 25.0
@@ -481,22 +508,23 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                 except Exception as e:
                     logger.warning(f"ATR/Regime 批次更新失敗: {e}")
 
-            # 3.5 每 24 小時定時派發量化交易與投研郵報至 Gmail (週日自動發送每週總結，平日發送每日日報)
-            if (now - last_daily_report_time).total_seconds() > 86400:
+            # 3.5 每日定點 21:00 (TST) 派發量化交易與投研郵報至 Gmail (美股開盤前夕戰報，週日發週報，平日發日報)
+            cur_d = get_taipei_datestr()
+            is_report_time = (now.hour > 21) or (now.hour == 21 and now.minute >= 0)
+            if is_report_time and last_daily_report_date != cur_d:
                 try:
-                    cur_d = get_taipei_datestr()
                     is_sunday = now.weekday() == 6
                     if is_sunday:
                         from scripts.daily_report_dispatcher import dispatch_weekly_report
-                        add_recent_log(f"📧 正在生成並派發【每週量化交易總結週報】({cur_d}) 至 Gmail...")
+                        add_recent_log(f"📧 正在生成並派發【每週量化交易總結週報】({cur_d} 21:00) 至 Gmail...")
                         dispatch_weekly_report(cur_d)
                         add_recent_log(f"✅ 【週報派發成功】{cur_d} weekly report and trading report 已送達！")
                     else:
                         from scripts.daily_report_dispatcher import dispatch_daily_report
-                        add_recent_log(f"📧 正在生成並派發每 24 小時交易日報 ({cur_d}) 至 Gmail...")
+                        add_recent_log(f"📧 正在生成並派發 21:00 每日交易日報 ({cur_d}) 至 Gmail...")
                         dispatch_daily_report(cur_d)
                         add_recent_log(f"✅ 【日報派發成功】{cur_d} daily report and trading report 已送達！")
-                    last_daily_report_time = now
+                    last_daily_report_date = cur_d
                 except Exception as mail_e:
                     add_recent_log(f"⚠️ 郵報派發異常: {mail_e}")
 
@@ -924,6 +952,7 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                 "current_session_code": sess_code,
                 "session_trades_counter": dict(session_trades_counter),
                 "daily_trades_counter": dict(daily_trades_counter),
+                "last_daily_report_date": last_daily_report_date,
                 "is_quiet_period": is_session_open_quiet_period(now),
                 "asset_regimes": cached_regimes,
                 "recent_logs": recent_logs[-10:]
