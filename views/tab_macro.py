@@ -746,3 +746,15 @@ def render(api_key: str):
 </div>
 </div>"""
             st.markdown(clean_html(news_html), unsafe_allow_html=True)
+            if item.get("article_id"):
+                with st.expander(f"📖 點擊展開閱讀 [{provider}] 原生機構完整內文 ({item['title'][:40]}...)", expanded=False):
+                    try:
+                        from modules.ibkr_engine import get_ibkr_engine
+                        eng = get_ibkr_engine(client_id=470)
+                        art_content = eng.get_news_article(item.get("provider", "BRFG"), item["article_id"])
+                        if art_content:
+                            st.components.v1.html(f"<div style='color:#e2e8f0;font-family:sans-serif;line-height:1.6;'>{art_content}</div>", height=320, scrolling=True)
+                        else:
+                            st.info("該篇報導正在由 TWS 機構專線解碼中...")
+                    except Exception as a_err:
+                        st.caption(f"原生內文加載提示: {a_err}")

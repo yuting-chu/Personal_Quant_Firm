@@ -23,7 +23,7 @@ try:
 except ImportError:
     HAS_IB_INSYNC = False
 
-from modules.database import insert_trade_log
+from modules.database import insert_trade_log, save_tws_news_item, get_recent_tws_news
 
 logger = logging.getLogger("IBKREngine")
 
@@ -346,6 +346,15 @@ class IBKREngine:
             self._news_stream.insert(0, item)
             if len(self._news_stream) > 100:
                 self._news_stream.pop()
+            try:
+                save_tws_news_item(
+                    article_id=news_tick.articleId,
+                    timestamp=dt_str,
+                    headline=headline_clean,
+                    provider=news_tick.providerCode
+                )
+            except Exception:
+                pass
             logger.info(f"📰 [TWS Live News] ({news_tick.providerCode}) {headline_clean}")
 
         if self._news_callback and callable(self._news_callback):
@@ -394,58 +403,91 @@ class IBKREngine:
             logger.warning(f"查詢新聞提供商失敗: {e}")
             return []
 
-    def get_recent_news(self, symbol: str = "SPY", limit: int = 10) -> List[Dict[str, Any]]:
+    def get_recent_news(self, symbol: str = "ALL", limit: int = 10) -> List[Dict[str, Any]]:
         """
-        獲取最新機構財經新聞。優先讀取 Tick 292 即時串流快取，
-        若快取為空則調用 reqHistoricalNews 進行歷史新聞回補。
+        獲取最新機構財經新聞。
+        1. 優先讀取 Tick 292 即時串流快取與 SQLite 本地快取。
+        2. 若快取不足，調用 reqHistoricalNews 針對 Briefing (BRFG_ALL, BRFG_SMU) 與 Dow Jones (DJNL_ALL) 主題專線進行即時回補。
         """
-        if not self.connect():
-            return []
-
-        # 優先返回即時串流快取
+        # 1. 先檢視本地 SQLite 與記憶體快取
+        cached_items = []
         if self._news_stream:
-            return self._news_stream[:limit]
-
-        # 若串流尚未累積，調用 reqHistoricalNews 抓取最新機構新聞
+            cached_items.extend(self._news_stream)
+        
         try:
-            providers = self.get_news_providers()
-            p_codes = "+".join([p["code"] for p in providers]) if providers else "BRFG+BRFUPDN+DJNL"
+            db_news = get_recent_tws_news(limit=limit)
+            for dn in db_news:
+                if not any(x.get("article_id") == dn.get("article_id") for x in cached_items):
+                    cached_items.append(dn)
+        except Exception:
+            pass
 
-            contract = self.make_contract(symbol, "STK")
-            if not getattr(contract, "conId", 0):
-                self.ib.qualifyContracts(contract)
+        if len(cached_items) >= limit:
+            cached_items.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
+            return cached_items[:limit]
 
-            hist_items = self.ib.reqHistoricalNews(
-                conId=contract.conId,
-                providerCodes=p_codes,
-                startDateTime="",
-                endDateTime="",
-                totalResults=limit
-            )
+        if not self.connect():
+            return cached_items[:limit]
 
-            results = []
-            for item in hist_items:
-                hl = item.headline
-                if hl.startswith("{") and "}" in hl:
-                    hl = hl.split("}", 1)[1].strip()
-                t_str = item.time.strftime("%Y-%m-%d %H:%M:%S") if hasattr(item.time, "strftime") else str(item.time)
-                news_dict = {
-                    "title": hl,
-                    "headline": hl,
-                    "date": t_str,
-                    "timestamp": t_str,
-                    "provider": item.providerCode,
-                    "article_id": item.articleId,
-                    "source": f"TWS-Historical ({item.providerCode})"
-                }
-                results.append(news_dict)
-                if not any(x.get("article_id") == item.articleId for x in self._news_stream):
-                    self._news_stream.append(news_dict)
+        # 2. 調用 reqHistoricalNews 抓取最新機構新聞
+        try:
+            results = list(cached_items)
+            
+            # 若為全域宏觀新聞 (symbol 為 ALL, *, 或 SPY)，優先抓取 BRFG 與 DJNL 主題合約 (Broad Topic News)
+            if symbol.upper() in ["ALL", "*", "SPY"]:
+                # 100283238: BRFG_ALL (Briefing All News), 100145087: BRFG_SMU (Stock Market Update), 219885944: DJNL_ALL (Dow Jones)
+                target_con_ids = [(100283238, "BRFG"), (100145087, "BRFG"), (219885944, "DJNL")]
+            else:
+                contract = self.make_contract(symbol, "STK")
+                if not getattr(contract, "conId", 0):
+                    self.ib.qualifyContracts(contract)
+                target_con_ids = [(contract.conId, "BRFG+BRFUPDN+DJNL")]
 
-            return results
+            for cid, p_code in target_con_ids:
+                if not cid:
+                    continue
+                try:
+                    hist_items = self.ib.reqHistoricalNews(
+                        conId=cid,
+                        providerCodes=p_code,
+                        startDateTime="",
+                        endDateTime="",
+                        totalResults=min(limit, 8)
+                    )
+                    for item in hist_items:
+                        hl = item.headline
+                        if hl.startswith("{") and "}" in hl:
+                            hl = hl.split("}", 1)[1].strip()
+                        t_str = item.time.strftime("%Y-%m-%d %H:%M:%S") if hasattr(item.time, "strftime") else str(item.time)
+                        news_dict = {
+                            "title": hl,
+                            "headline": hl,
+                            "date": t_str,
+                            "timestamp": t_str,
+                            "provider": item.providerCode,
+                            "article_id": item.articleId,
+                            "source": f"TWS 原生外電 ({item.providerCode})",
+                            "link": "#"
+                        }
+                        if not any(x.get("article_id") == item.articleId for x in results):
+                            results.append(news_dict)
+                            try:
+                                save_tws_news_item(
+                                    article_id=item.articleId,
+                                    timestamp=t_str,
+                                    headline=hl,
+                                    provider=item.providerCode
+                                )
+                            except Exception:
+                                pass
+                except Exception as query_err:
+                    logger.debug(f"查詢 conId {cid} 歷史外電異常: {query_err}")
+
+            results.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
+            return results[:limit]
         except Exception as e:
             logger.warning(f"TWS 歷史新聞回補失敗: {e}")
-            return []
+            return cached_items[:limit]
 
     def get_news_article(self, provider_code: str, article_id: str) -> str:
         """獲取指定新聞之完整內文 (HTML/Text)"""

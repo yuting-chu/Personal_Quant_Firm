@@ -26,23 +26,34 @@ logger = logging.getLogger("NewsFetcher")
 def fetch_tws_api_news(limit: int = 10) -> List[Dict[str, Any]]:
     """
     透過本地 TWS / IB Gateway API 獲取機構級原生新聞 (Generic Tick 292 / Historical News)
-    支援 Briefing (BRFG), Dow Jones (DJNL) 等機構專線。
+    支援 Briefing (BRFG), Dow Jones (DJNL) 等機構專線，並整合本地 SQLite 快取。
     """
+    # 1. 優先讀取本地已累積之 TWS 原生快取
+    try:
+        from modules.database import get_recent_tws_news
+        db_items = get_recent_tws_news(limit=limit)
+        if len(db_items) >= min(limit, 5):
+            return db_items
+    except Exception as dbe:
+        logger.debug(f"SQLite TWS 新聞讀取略過: {dbe}")
+
+    # 2. 連線 TWS 即時回補主題外電 (BRFG_ALL, DJNL_ALL 等)
     try:
         from modules.ibkr_engine import get_ibkr_engine
-        engine = get_ibkr_engine()
+        engine = get_ibkr_engine(client_id=460)
         if engine.is_connected() or engine.connect(timeout=2):
-            items = engine.get_recent_news(symbol="SPY", limit=limit)
+            items = engine.get_recent_news(symbol="ALL", limit=limit)
             if items:
                 formatted = []
                 for it in items:
                     formatted.append({
                         "title": it.get("title", ""),
                         "headline": it.get("headline", ""),
-                        "link": "#",
+                        "link": it.get("link", "#"),
                         "date": it.get("date", ""),
                         "provider": it.get("provider", "TWS"),
-                        "source": it.get("source", "IBKR TWS API")
+                        "article_id": it.get("article_id", ""),
+                        "source": it.get("source", f"TWS 原生外電 ({it.get('provider', 'TWS')})")
                     })
                 return formatted
     except Exception as e:

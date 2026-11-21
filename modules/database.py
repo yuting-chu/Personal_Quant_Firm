@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from typing import List, Dict, Any
 import pandas as pd
 from datetime import datetime
 from modules.time_utils import get_taipei_timestamp, get_taipei_datestr
@@ -55,6 +56,16 @@ def init_db():
             k_risk REAL,
             regime_label TEXT,
             details_json TEXT
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS tws_news_feed (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            article_id TEXT UNIQUE,
+            timestamp TEXT,
+            headline TEXT,
+            provider TEXT,
+            content_html TEXT
         )
     ''')
     conn.commit()
@@ -247,6 +258,60 @@ def get_recent_sentiment_matrix_logs(limit: int = 15) -> pd.DataFrame:
     )
     conn.close()
     return df
+
+
+def save_tws_news_item(article_id: str, timestamp: str, headline: str, provider: str, content_html: str = "") -> bool:
+    """
+    保存 TWS 原生新聞 (Tick 292 / Historical) 至 SQLite 庫。
+    使用 INSERT OR IGNORE 確保 article_id 不重複。
+    """
+    if not article_id or not headline:
+        return False
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute('''
+            INSERT OR IGNORE INTO tws_news_feed (article_id, timestamp, headline, provider, content_html)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (article_id, timestamp, headline, provider, content_html))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
+def get_recent_tws_news(limit: int = 10) -> List[Dict[str, Any]]:
+    """
+    讀取資料庫快取的最新 TWS 機構新聞清單。
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute('''
+            SELECT article_id, timestamp, headline, provider, content_html
+            FROM tws_news_feed
+            ORDER BY timestamp DESC
+            LIMIT ?
+        ''', (limit,))
+        rows = c.fetchall()
+        conn.close()
+        return [
+            {
+                "article_id": r[0],
+                "date": r[1],
+                "timestamp": r[1],
+                "title": r[2],
+                "headline": r[2],
+                "provider": r[3],
+                "content_html": r[4] or "",
+                "source": f"TWS API ({r[3]})",
+                "link": "#"
+            }
+            for r in rows
+        ]
+    except Exception:
+        return []
 
 
 init_db()
