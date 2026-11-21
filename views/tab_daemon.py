@@ -49,6 +49,17 @@ ASSET_METADATA = [
 ]
 
 
+def clean_html(html_str: str) -> str:
+    """
+    去除每行多餘前導縮排與註解，防止 Markdown 將 4 格以上縮排誤判為代碼區塊 (<pre><code>)。
+    """
+    return "\n".join(
+        line.strip()
+        for line in html_str.strip().splitlines()
+        if line.strip() and not line.strip().startswith("<!--")
+    )
+
+
 def read_daemon_status() -> dict:
     """讀取守護進程狀態檔案"""
     if os.path.exists(STATUS_FILE):
@@ -378,11 +389,11 @@ def render(api_key: str = ""):
                 pass
 
             st.markdown(
-                """
+                clean_html("""
                 <div style="font-size:12px; color:#6b7280; margin-bottom:12px;">
                     💡 <b>雙柱計量架構</b>：整合「真實資本定價 (70%)」與「即時外電黑天鵝 (30%)」，嚴格在不侵犯策略進出場 Alpha 前提下動態調節開倉預算。
                 </div>
-                """,
+                """),
                 unsafe_allow_html=True
             )
 
@@ -448,13 +459,12 @@ def render(api_key: str = ""):
 
             with col_heat_desc:
                 st.markdown(
-                    """
+                    clean_html("""
                     <div style="background-color: #ffffff; border: 1px solid #e2e8f0; padding: 14px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                         <div style="font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 10px; display: flex; align-items: center;">
                             📊 計量經濟學對衝解讀
                         </div>
 
-                        <!-- 1. 負相關避險資產 (淺綠色塊條) -->
                         <div style="background-color: #ecfdf5; border: 1px solid #d1fae5; border-left: 5px solid #10b981; padding: 10px 12px; border-radius: 6px; margin-bottom: 10px;">
                             <div style="font-weight: 700; color: #065f46; font-size: 13px; margin-bottom: 3px;">
                                 🛡️ 負相關避險資產 (Negative Correlation)
@@ -464,7 +474,6 @@ def render(api_key: str = ""):
                             </div>
                         </div>
 
-                        <!-- 2. 高 Beta 進攻資產 (淺橙色塊條) -->
                         <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-left: 5px solid #f59e0b; padding: 10px 12px; border-radius: 6px; margin-bottom: 10px;">
                             <div style="font-weight: 700; color: #92400e; font-size: 13px; margin-bottom: 3px;">
                                 ⚡ 高 Beta 進攻資產 (High Co-Movement)
@@ -474,7 +483,6 @@ def render(api_key: str = ""):
                             </div>
                         </div>
 
-                        <!-- 3. 宏觀正交資產 (淺藍色塊條) -->
                         <div style="background-color: #f0f9ff; border: 1px solid #e0f2fe; border-left: 5px solid #0284c7; padding: 10px 12px; border-radius: 6px;">
                             <div style="font-weight: 700; color: #075985; font-size: 13px; margin-bottom: 3px;">
                                 🪙 宏觀正交資產 (Orthogonal Diversifier)
@@ -484,7 +492,7 @@ def render(api_key: str = ""):
                             </div>
                         </div>
                     </div>
-                    """,
+                    """),
                     unsafe_allow_html=True
                 )
         else:
