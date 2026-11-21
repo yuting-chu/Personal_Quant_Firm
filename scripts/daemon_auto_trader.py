@@ -468,11 +468,18 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
             now = datetime.now()
             add_recent_log(f"--- 執行循環 #{iterations} ({get_taipei_timestamp()}) ---")
 
-            # 1. 檢查 TWS 連線
+            # 1. 檢查 TWS 連線並確保 Generic Tick 292 即時新聞流就緒
             is_connected = engine.connect()
             account_summary = engine.get_account_summary() if is_connected else {}
             net_liq = account_summary.get("net_liquidation", 1000000.0)
             account_id = account_summary.get("account_id", "未連線")
+
+            if is_connected and not engine._news_sub_contract:
+                try:
+                    if engine.subscribe_realtime_news("SPY"):
+                        add_recent_log("📡 已接入 TWS 原生 Generic Tick 292 即時新聞專線 (Briefing / Dow Jones)")
+                except Exception as ne:
+                    logger.debug(f"Tick 292 新聞訂閱嘗試: {ne}")
 
             # 2. 定期更新情緒指標 (每 30 分鐘)
             if (now - last_sentiment_time).total_seconds() > 1800:

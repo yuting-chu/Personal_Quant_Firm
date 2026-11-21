@@ -18,7 +18,7 @@ import pandas as pd
 from datetime import datetime
 
 try:
-    from ib_insync import IB, Stock, Future, ContFuture, Forex, MarketOrder, LimitOrder, util
+    from ib_insync import IB, Stock, Future, ContFuture, Forex, MarketOrder, LimitOrder, Contract, Bond, util
     HAS_IB_INSYNC = True
 except ImportError:
     HAS_IB_INSYNC = False
@@ -38,6 +38,9 @@ class IBKREngine:
         self.client_id = client_id
         self.ib: Optional[Any] = None
         self._connected = False
+        self._news_stream: List[Dict[str, Any]] = []
+        self._news_sub_contract: Optional[Any] = None
+        self._news_callback = None
 
     def connect(self, timeout: int = 3) -> bool:
         """
@@ -312,6 +315,208 @@ class IBKREngine:
             return {"success": True, "msg": f"✅ 市價單已送出 (Order ID: {trade.order.orderId})"}
         except Exception as e:
             return {"success": False, "msg": f"下單失敗: {e}"}
+
+    def _on_tick_news(self, news_tick):
+        """內部回調：接收 Generic Tick 292 即時新聞推播"""
+        try:
+            ts = news_tick.timeStamp / 1000.0 if news_tick.timeStamp > 1e11 else news_tick.timeStamp
+            dt_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            dt_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        headline_clean = news_tick.headline
+        # 清除前綴標籤如 {A:...}
+        if headline_clean.startswith("{") and "}" in headline_clean:
+            headline_clean = headline_clean.split("}", 1)[1].strip()
+
+        item = {
+            "title": headline_clean,
+            "headline": headline_clean,
+            "date": dt_str,
+            "timestamp": dt_str,
+            "provider": news_tick.providerCode,
+            "article_id": news_tick.articleId,
+            "extra_data": getattr(news_tick, "extraData", ""),
+            "source": f"TWS-Tick292 ({news_tick.providerCode})"
+        }
+
+        # 去重與長度限制 (保留最新 100 筆)
+        if not any(x.get("article_id") == news_tick.articleId for x in self._news_stream):
+            self._news_stream.insert(0, item)
+            if len(self._news_stream) > 100:
+                self._news_stream.pop()
+            logger.info(f"📰 [TWS Live News] ({news_tick.providerCode}) {headline_clean}")
+
+        if self._news_callback and callable(self._news_callback):
+            try:
+                self._news_callback(item)
+            except Exception as cb_err:
+                logger.warning(f"新聞回調執行異常: {cb_err}")
+
+    def subscribe_realtime_news(self, symbol: str = "SPY", sec_type: str = "STK", callback=None) -> bool:
+        """
+        訂閱 TWS 原生 Generic Tick 292 即時新聞串流 (Realtime News Bulletins)
+        支援自動掛載新聞提供商，無縫接收 Briefing, Dow Jones 等即時外電。
+        """
+        if not self.connect():
+            return False
+        if callback:
+            self._news_callback = callback
+
+        try:
+            contract = self.make_contract(symbol, sec_type)
+            if not getattr(contract, "conId", 0):
+                self.ib.qualifyContracts(contract)
+
+            # 掛載事件監聽
+            if hasattr(self.ib, 'tickNewsEvent'):
+                if self._on_tick_news not in self.ib.tickNewsEvent:
+                    self.ib.tickNewsEvent += self._on_tick_news
+
+            # 傳入 Generic Tick 292 啟用即時新聞推送
+            self._news_sub_contract = contract
+            self.ib.reqMktData(contract, genericTickList="292", snapshot=False)
+            logger.info(f"✅ 已成功訂閱 {symbol} 之 TWS Generic Tick 292 即時新聞串流！")
+            return True
+        except Exception as e:
+            logger.error(f"訂閱 Tick 292 新聞失敗: {e}")
+            return False
+
+    def get_news_providers(self) -> List[Dict[str, str]]:
+        """查詢 TWS 帳戶已開通之新聞提供商清單 (News Providers)"""
+        if not self.connect():
+            return []
+        try:
+            providers = self.ib.reqNewsProviders()
+            return [{"code": p.code, "name": p.name} for p in providers]
+        except Exception as e:
+            logger.warning(f"查詢新聞提供商失敗: {e}")
+            return []
+
+    def get_recent_news(self, symbol: str = "SPY", limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        獲取最新機構財經新聞。優先讀取 Tick 292 即時串流快取，
+        若快取為空則調用 reqHistoricalNews 進行歷史新聞回補。
+        """
+        if not self.connect():
+            return []
+
+        # 優先返回即時串流快取
+        if self._news_stream:
+            return self._news_stream[:limit]
+
+        # 若串流尚未累積，調用 reqHistoricalNews 抓取最新機構新聞
+        try:
+            providers = self.get_news_providers()
+            p_codes = "+".join([p["code"] for p in providers]) if providers else "BRFG+BRFUPDN+DJNL"
+
+            contract = self.make_contract(symbol, "STK")
+            if not getattr(contract, "conId", 0):
+                self.ib.qualifyContracts(contract)
+
+            hist_items = self.ib.reqHistoricalNews(
+                conId=contract.conId,
+                providerCodes=p_codes,
+                startDateTime="",
+                endDateTime="",
+                totalResults=limit
+            )
+
+            results = []
+            for item in hist_items:
+                hl = item.headline
+                if hl.startswith("{") and "}" in hl:
+                    hl = hl.split("}", 1)[1].strip()
+                t_str = item.time.strftime("%Y-%m-%d %H:%M:%S") if hasattr(item.time, "strftime") else str(item.time)
+                news_dict = {
+                    "title": hl,
+                    "headline": hl,
+                    "date": t_str,
+                    "timestamp": t_str,
+                    "provider": item.providerCode,
+                    "article_id": item.articleId,
+                    "source": f"TWS-Historical ({item.providerCode})"
+                }
+                results.append(news_dict)
+                if not any(x.get("article_id") == item.articleId for x in self._news_stream):
+                    self._news_stream.append(news_dict)
+
+            return results
+        except Exception as e:
+            logger.warning(f"TWS 歷史新聞回補失敗: {e}")
+            return []
+
+    def get_news_article(self, provider_code: str, article_id: str) -> str:
+        """獲取指定新聞之完整內文 (HTML/Text)"""
+        if not self.connect():
+            return ""
+        try:
+            art = self.ib.reqNewsArticle(provider_code, article_id)
+            return art.articleText if hasattr(art, "articleText") else str(art)
+        except Exception as e:
+            logger.warning(f"獲取新聞內文失敗 ({article_id}): {e}")
+            return ""
+
+    def place_bond_order(
+        self,
+        symbol_or_cusip: str,
+        action: str,
+        quantity_in_thousands: int,
+        limit_price: Optional[float] = None,
+        order_type: str = "LMT",
+        currency: str = "USD"
+    ) -> Dict[str, Any]:
+        """
+        固定收益 (Fixed Income) 債券/國庫券專用委託發送方法。
+        
+        【重要官方規範】：
+        1. 數量單位：固定收益商品的數量以 $1,000 面額 (Units of $1k Face Value) 為單位。
+           例如 quantity_in_thousands = 10 代表委託面額 $10,000 美元。
+        2. 防彈窗卡死提醒：必須在 TWS 設定勾選
+           「Global Configuration -> API -> Precautions -> Bypass bond disclaimer for API orders」，
+           否則 API 委託會因免責聲明彈窗而受阻。
+        """
+        if not self.connect():
+            return {"success": False, "msg": "無法連線至本地 TWS"}
+
+        try:
+            action_clean = action.upper().strip()
+            if symbol_or_cusip.startswith("IBCID") or len(symbol_or_cusip) == 9:
+                contract = Contract(secType="BOND", exchange="SMART", currency=currency)
+                contract.cusip = symbol_or_cusip
+            else:
+                contract = Contract(secType="BOND", symbol=symbol_or_cusip, exchange="SMART", currency=currency)
+
+            self.ib.qualifyContracts(contract)
+
+            qty = float(quantity_in_thousands)
+            if order_type.upper() == "LMT" and limit_price is not None:
+                order = LimitOrder(action_clean, qty, limit_price)
+            else:
+                order = MarketOrder(action_clean, qty)
+
+            trade = self.ib.placeOrder(contract, order)
+            self.ib.sleep(0.5)
+
+            order_desc = f"{action_clean} {quantity_in_thousands}k 面額 {symbol_or_cusip} @ {'市價' if limit_price is None else f'${limit_price}'}"
+            insert_trade_log(
+                symbol=symbol_or_cusip,
+                action=f"債券委託: {order_desc}",
+                pnl=0.0,
+                strategy_type="IBKR 固定收益 (BOND) 交易",
+                reason=f"發單至帳戶 {self.ib.managedAccounts()} (單位: $1k 面額)",
+                audit_status="已送出 (請確認已開啟 Bypass bond disclaimer)"
+            )
+
+            logger.info(f"✅ 固定收益債券委託已送出: {order_desc} (Order ID: {trade.order.orderId})")
+            return {
+                "success": True,
+                "msg": f"✅ 債券委託已發送 (Order ID: {trade.order.orderId})，面額: ${quantity_in_thousands * 1000:,} USD",
+                "order_id": trade.order.orderId
+            }
+        except Exception as e:
+            logger.error(f"固定收益委託發送失敗: {e}")
+            return {"success": False, "msg": f"債券委託失敗: {e}"}
 
 
 # 單例快取實例
