@@ -23,7 +23,13 @@ try:
 except ImportError:
     HAS_IB_INSYNC = False
 
-from modules.database import insert_trade_log, save_tws_news_item, get_recent_tws_news
+try:
+    from modules.database import insert_trade_log, save_tws_news_item, get_recent_tws_news
+except ImportError:
+    import importlib
+    import modules.database
+    importlib.reload(modules.database)
+    from modules.database import insert_trade_log, save_tws_news_item, get_recent_tws_news
 
 logger = logging.getLogger("IBKREngine")
 

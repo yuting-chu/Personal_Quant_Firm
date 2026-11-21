@@ -2,12 +2,25 @@ import streamlit as st
 import os
 from datetime import datetime
 from dotenv import load_dotenv
-from modules.database import get_trade_logs, get_today_realized_pnl
-
 import importlib
-import modules.ai_engine
+import modules.database
 import modules.time_utils
 import modules.ibkr_engine
+import modules.news_fetcher
+import modules.market_sentiment_matrix
+import modules.sentiment_engine
+import modules.ai_engine
+
+# 強制動態熱重載 (Hot-Reloading)，依循拓撲依賴順序：先底層資料庫與工具、後核心引擎、再前端分頁
+importlib.reload(modules.database)
+importlib.reload(modules.time_utils)
+importlib.reload(modules.ibkr_engine)
+importlib.reload(modules.news_fetcher)
+importlib.reload(modules.market_sentiment_matrix)
+importlib.reload(modules.sentiment_engine)
+importlib.reload(modules.ai_engine)
+
+from modules.database import get_trade_logs, get_today_realized_pnl
 from modules.ibkr_engine import get_ibkr_engine
 from modules.time_utils import get_dual_clock_str
 from views import (
@@ -19,10 +32,6 @@ from views import (
     tab_audit
 )
 
-# 強制動態熱重載 (Hot-Reloading)，確保磁碟上的最新 AI 模型與指標邏輯即時生效，不被 Python 記憶體快取鎖定
-importlib.reload(modules.ai_engine)
-importlib.reload(modules.time_utils)
-importlib.reload(modules.ibkr_engine)
 importlib.reload(tab_daemon)
 importlib.reload(tab_macro)
 importlib.reload(tab_industry)
