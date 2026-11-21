@@ -449,16 +449,40 @@ def render(api_key: str = ""):
             with col_heat_desc:
                 st.markdown(
                     """
-                    <div style="background-color: rgba(30, 41, 59, 0.7); border: 1px solid rgba(148, 163, 184, 0.2); padding: 16px; border-radius: 8px; font-size: 13px; line-height: 1.7;">
-                        <h4 style="margin-top:0; color:#38bdf8;">📊 計量經濟學對衝解讀：</h4>
-                        <ul>
-                            <li><b>🛡️ 負相關避險資產</b>：<br>
-                                <code>TLT</code> (公債)、<code>EURUSD</code> (歐元)、<code>/MCL</code> (原油) 與美股大盤指數呈現顯著負相關或微弱負相關，在美股市場遭受流動性拋售時提供非對稱保護。</li>
-                            <li><b>⚡ 高 Beta 進攻資產</b>：<br>
-                                <code>/MES</code>、<code>/MNQ</code>、<code>/M2K</code>、<code>/MBT</code> 彼此相關性高達 <code>+0.70 ~ +0.95</code>，在牛市週期共振上漲，屬攻擊性部位。</li>
-                            <li><b>🪙 宏觀正交資產</b>：<br>
-                                <code>/MGC</code> (微型黃金) 與股票指數相關性極低 (約 <code>+0.20</code>)，主要受實質利率 (TIPS) 與地緣政治主導，具備極佳的資產配置分散化能力。</li>
-                        </ul>
+                    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; padding: 14px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 10px; display: flex; align-items: center;">
+                            📊 計量經濟學對衝解讀
+                        </div>
+
+                        <!-- 1. 負相關避險資產 (淺綠色塊條) -->
+                        <div style="background-color: #ecfdf5; border: 1px solid #d1fae5; border-left: 5px solid #10b981; padding: 10px 12px; border-radius: 6px; margin-bottom: 10px;">
+                            <div style="font-weight: 700; color: #065f46; font-size: 13px; margin-bottom: 3px;">
+                                🛡️ 負相關避險資產 (Negative Correlation)
+                            </div>
+                            <div style="font-size: 12px; color: #047857; line-height: 1.6;">
+                                <code style="background:#d1fae5; color:#065f46; padding:1px 5px; border-radius:3px; font-weight:600;">TLT</code> (公債)、<code style="background:#d1fae5; color:#065f46; padding:1px 5px; border-radius:3px; font-weight:600;">EURUSD</code> (歐元)、<code style="background:#d1fae5; color:#065f46; padding:1px 5px; border-radius:3px; font-weight:600;">/MCL</code> (原油) 與美股大盤呈顯著負相關或微弱負相關，在美股市場遭受流動性拋售時提供非對稱保護。
+                            </div>
+                        </div>
+
+                        <!-- 2. 高 Beta 進攻資產 (淺橙色塊條) -->
+                        <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-left: 5px solid #f59e0b; padding: 10px 12px; border-radius: 6px; margin-bottom: 10px;">
+                            <div style="font-weight: 700; color: #92400e; font-size: 13px; margin-bottom: 3px;">
+                                ⚡ 高 Beta 進攻資產 (High Co-Movement)
+                            </div>
+                            <div style="font-size: 12px; color: #b45309; line-height: 1.6;">
+                                <code style="background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:3px; font-weight:600;">/MES</code>、<code style="background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:3px; font-weight:600;">/MNQ</code>、<code style="background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:3px; font-weight:600;">/M2K</code>、<code style="background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:3px; font-weight:600;">/MBT</code> 彼此相關性高達 <b style="color:#78350f;">+0.70 ~ +0.95</b>，在牛市週期共振上漲，屬主要攻擊部位。
+                            </div>
+                        </div>
+
+                        <!-- 3. 宏觀正交資產 (淺藍色塊條) -->
+                        <div style="background-color: #f0f9ff; border: 1px solid #e0f2fe; border-left: 5px solid #0284c7; padding: 10px 12px; border-radius: 6px;">
+                            <div style="font-weight: 700; color: #075985; font-size: 13px; margin-bottom: 3px;">
+                                🪙 宏觀正交資產 (Orthogonal Diversifier)
+                            </div>
+                            <div style="font-size: 12px; color: #0369a1; line-height: 1.6;">
+                                <code style="background:#e0f2fe; color:#075985; padding:1px 5px; border-radius:3px; font-weight:600;">/MGC</code> (微型黃金) 與股票指數相關性極低 (約 <b style="color:#0c4a6e;">+0.20</b>)，主要受實質利率 (TIPS) 與地緣政治主導，具備極佳資產配置分散化能力。
+                            </div>
+                        </div>
                     </div>
                     """,
                     unsafe_allow_html=True
