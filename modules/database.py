@@ -35,6 +35,28 @@ def init_db():
             metrics_snapshot TEXT
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS sentiment_matrix_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            vix REAL,
+            vix3m REAL,
+            vix9d REAL,
+            vix_ratio_30_90 REAL,
+            skew REAL,
+            vvix REAL,
+            hy_oas REAL,
+            hy_oas_5d_diff REAL,
+            s_term REAL,
+            s_credit REAL,
+            s_tail REAL,
+            s_implied REAL,
+            news_shock_flag INTEGER,
+            k_risk REAL,
+            regime_label TEXT,
+            details_json TEXT
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -172,6 +194,59 @@ def get_macro_report_by_id(report_id: int):
             "metrics_snapshot": row[6]
         }
     return None
+
+
+def save_sentiment_matrix_log(entry: dict) -> int:
+    """
+    保存市場隱含情緒矩陣與動態風控乘數計算紀錄至 SQLite。
+    """
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    now_str = get_taipei_timestamp()
+    c.execute('''
+        INSERT INTO sentiment_matrix_logs (
+            timestamp, vix, vix3m, vix9d, vix_ratio_30_90,
+            skew, vvix, hy_oas, hy_oas_5d_diff,
+            s_term, s_credit, s_tail, s_implied,
+            news_shock_flag, k_risk, regime_label, details_json
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        now_str,
+        float(entry.get('vix', 0.0)),
+        float(entry.get('vix3m', 0.0)),
+        float(entry.get('vix9d', 0.0)),
+        float(entry.get('vix_ratio_30_90', 1.0)),
+        float(entry.get('skew', 0.0)),
+        float(entry.get('vvix', 0.0)),
+        float(entry.get('hy_oas', 0.0)),
+        float(entry.get('hy_oas_5d_diff', 0.0)),
+        float(entry.get('s_term', 0.0)),
+        float(entry.get('s_credit', 0.0)),
+        float(entry.get('s_tail', 0.0)),
+        float(entry.get('s_implied', 0.0)),
+        1 if entry.get('news_shock_flag') else 0,
+        float(entry.get('k_risk', 1.0)),
+        str(entry.get('regime_label', '中性')),
+        str(entry.get('details_json', '{}'))
+    ))
+    row_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return row_id
+
+
+def get_recent_sentiment_matrix_logs(limit: int = 15) -> pd.DataFrame:
+    """
+    讀取最新市場隱含情緒紀錄。
+    """
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query(
+        "SELECT * FROM sentiment_matrix_logs ORDER BY timestamp DESC LIMIT ?",
+        conn, params=(limit,)
+    )
+    conn.close()
+    return df
 
 
 init_db()

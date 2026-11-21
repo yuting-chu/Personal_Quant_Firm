@@ -483,12 +483,13 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
 
             # 2. 定期更新情緒指標 (每 30 分鐘)
             if (now - last_sentiment_time).total_seconds() > 1800:
-                add_recent_log("🌐 正在調用情緒核心進行新聞情緒量化評估...")
+                add_recent_log("🌐 正在調用雙柱情緒矩陣進行新聞與市場隱含情緒量化評估...")
                 try:
                     current_sentiment = get_market_sentiment(persist_report=True)
                     risk_multiplier = float(current_sentiment.get("risk_multiplier", 1.0))
+                    implied_score = current_sentiment.get("market_implied_score", "N/A")
                     last_sentiment_time = now
-                    add_recent_log(f"✅ 情緒更新完成: 得分 {current_sentiment.get('sentiment_score')} ({current_sentiment.get('regime_label')}) | 風控乘數: {risk_multiplier}x")
+                    add_recent_log(f"✅ 雙柱情緒更新完成: 新聞得分 {current_sentiment.get('sentiment_score')} | 隱含得分 {implied_score} ({current_sentiment.get('regime_label')}) | 風控乘數: {risk_multiplier}x")
                 except Exception as e:
                     add_recent_log(f"⚠️ 情緒引擎評估異常，降級為安全中性乘數 1.0x: {e}")
                     risk_multiplier = 1.0
@@ -903,8 +904,9 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                     sl_dist = round(max(k2 * atr_val, min_sl), dec)
                     tp_dist = round(max(k3 * atr_val, min_sl * 1.5), dec)
 
-                    # 模型 1：波動度平價動態定規模 (Risk Parity Volatility Sizing)
-                    order_qty = compute_volatility_sized_quantity(sym, cfg, atr_val, TARGET_DOLLAR_RISK)
+                    # 模型 1：波動度平價動態定規模 (Risk Parity Volatility Sizing) 結合市場隱含風控乘數
+                    eff_risk_budget = TARGET_DOLLAR_RISK * risk_multiplier
+                    order_qty = compute_volatility_sized_quantity(sym, cfg, atr_val, eff_risk_budget)
 
                     tick_size = cfg.get("tick", 0.01)
 
@@ -952,7 +954,9 @@ def run_daemon(interval_sec: int = 20, run_once: bool = False, port: int = 7497)
                 "today_realized_pnl": today_realized,
                 "circuit_breaker_triggered": circuit_breaker_active,
                 "sentiment_score": current_sentiment.get("sentiment_score", 0.0),
+                "market_implied_score": current_sentiment.get("market_implied_score", 0.0),
                 "regime_label": current_sentiment.get("regime_label", "中性觀望"),
+                "implied_regime": current_sentiment.get("implied_regime", "中性平衡"),
                 "risk_multiplier": risk_multiplier,
                 "mnq_adx": round(current_mnq_adx, 2),
                 "current_session": sess_name,

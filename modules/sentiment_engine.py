@@ -166,18 +166,33 @@ def get_market_sentiment(api_key: str = None, persist_report: bool = True) -> Di
                 parsed = json.loads(match.group(0))
                 parsed["timestamp"] = get_taipei_timestamp()
                 parsed["model_source"] = "Gemini-3.6-Flash-Ensemble-v1"
+
+                # 整合市場真實資本定價矩陣 (Dual-Pillar 核心)
+                try:
+                    from modules.market_sentiment_matrix import compute_dynamic_risk_multiplier
+                    dyn = compute_dynamic_risk_multiplier(news_sentiment=parsed, persist=persist_report)
+                    parsed["risk_multiplier"] = dyn["k_risk"]
+                    parsed["market_implied_score"] = dyn["s_implied"]
+                    parsed["implied_regime"] = dyn["regime_label"]
+                    parsed["matrix_details"] = dyn["matrix_details"]
+                    parsed["risk_reasons"] = dyn["reasons"]
+                except Exception as me:
+                    logger.warning(f"市場隱含矩陣整合異常: {me}")
                 
                 # 自動持久化至 SQLite 研報庫
                 if persist_report:
                     try:
-                        content_md = f"### 宏觀即時情緒評估報告\n\n" \
-                                     f"- **情緒指標**: `{parsed.get('sentiment_score')}` ({parsed.get('regime_label')})\n" \
-                                     f"- **部位乘數**: `{parsed.get('risk_multiplier')}x` | **黑天鵝旗標**: `{parsed.get('volatility_shock_flag')}`\n\n" \
+                        reasons_str = "\n".join([f"- {r}" for r in parsed.get("risk_reasons", [])])
+                        content_md = f"### 宏觀即時情緒評估報告 (Dual-Pillar 雙柱模型)\n\n" \
+                                     f"- **新聞情緒得分**: `{parsed.get('sentiment_score')}` ({parsed.get('regime_label')})\n" \
+                                     f"- **市場隱含得分**: `{parsed.get('market_implied_score')}` ({parsed.get('implied_regime')})\n" \
+                                     f"- **最終部位乘數 (k_risk)**: `{parsed.get('risk_multiplier')}x` | **黑天鵝旗標**: `{parsed.get('volatility_shock_flag')}`\n\n" \
+                                     f"#### 風控調節依據\n{reasons_str}\n\n" \
                                      f"#### 核心驅動外電\n" + "\n".join([f"- {d}" for d in parsed.get("key_drivers", [])]) + \
                                      f"\n\n**執行建議**：{parsed.get('execution_recommendation')}"
                         save_macro_report(
                             report_type="即時新聞情緒量化簡報",
-                            title=f"全球財經情緒指數: {parsed.get('sentiment_score'):+.2f} ({parsed.get('regime_label')})",
+                            title=f"全域情緒指數: {parsed.get('sentiment_score'):+.2f} | k_risk: {parsed.get('risk_multiplier')}x",
                             summary=parsed.get("execution_recommendation", ""),
                             content_markdown=content_md,
                             metrics_snapshot=json.dumps(parsed, ensure_ascii=False)
@@ -191,13 +206,25 @@ def get_market_sentiment(api_key: str = None, persist_report: bool = True) -> Di
 
     # 4. 降級備援
     fallback_res = _heuristic_sentiment_analysis(news_items)
+    try:
+        from modules.market_sentiment_matrix import compute_dynamic_risk_multiplier
+        dyn = compute_dynamic_risk_multiplier(news_sentiment=fallback_res, persist=persist_report)
+        fallback_res["risk_multiplier"] = dyn["k_risk"]
+        fallback_res["market_implied_score"] = dyn["s_implied"]
+        fallback_res["implied_regime"] = dyn["regime_label"]
+        fallback_res["matrix_details"] = dyn["matrix_details"]
+        fallback_res["risk_reasons"] = dyn["reasons"]
+    except Exception as me:
+        logger.warning(f"降級市場隱含矩陣整合異常: {me}")
+
     if persist_report:
         try:
+            reasons_str = "\n".join([f"- {r}" for r in fallback_res.get("risk_reasons", [])])
             save_macro_report(
                 report_type="即時新聞情緒量化簡報 (啟發式備援)",
-                title=f"全球財經情緒指數: {fallback_res.get('sentiment_score'):+.2f} ({fallback_res.get('regime_label')})",
+                title=f"全域情緒指數: {fallback_res.get('sentiment_score'):+.2f} | k_risk: {fallback_res.get('risk_multiplier')}x",
                 summary=fallback_res.get("execution_recommendation", ""),
-                content_markdown=f"### 宏觀情緒啟發式評估\n\n- 情緒得分: `{fallback_res.get('sentiment_score')}`\n- 驅動外電:\n" + "\n".join([f"- {d}" for d in fallback_res.get("key_drivers", [])]),
+                content_markdown=f"### 宏觀情緒啟發式評估\n\n- 新聞得分: `{fallback_res.get('sentiment_score')}`\n- 隱含得分: `{fallback_res.get('market_implied_score')}`\n- 部位乘數: `{fallback_res.get('risk_multiplier')}x`\n\n#### 風控依據\n{reasons_str}\n\n#### 驅動外電\n" + "\n".join([f"- {d}" for d in fallback_res.get("key_drivers", [])]),
                 metrics_snapshot=json.dumps(fallback_res, ensure_ascii=False)
             )
         except Exception:
@@ -209,13 +236,14 @@ def get_market_sentiment(api_key: str = None, persist_report: bool = True) -> Di
 def get_sentiment_risk_adjustment() -> float:
     """
     供交易守護進程 (Trading Daemon) 極速獲取當前部位調整乘數 (Risk Multiplier)
-    範圍：0.0 (禁止新開倉) 到 1.2 (正常擴張)
+    範圍：0.30 (防禦性收縮) 到 1.20 (正常擴張)
     """
     try:
-        sentiment = get_market_sentiment(persist_report=False)
-        return float(sentiment.get("risk_multiplier", 1.0))
+        from modules.market_sentiment_matrix import compute_dynamic_risk_multiplier
+        dyn = compute_dynamic_risk_multiplier(persist=False)
+        return float(dyn.get("k_risk", 1.0))
     except Exception as e:
-        logger.error(f"獲取情緒風控乘數失敗: {e}")
+        logger.error(f"獲取市場隱含風控乘數失敗: {e}")
         return 1.0
 
 

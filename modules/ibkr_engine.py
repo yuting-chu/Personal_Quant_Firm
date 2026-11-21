@@ -18,7 +18,7 @@ import pandas as pd
 from datetime import datetime
 
 try:
-    from ib_insync import IB, Stock, Future, ContFuture, Forex, MarketOrder, LimitOrder, Contract, Bond, util
+    from ib_insync import IB, Stock, Future, ContFuture, Forex, MarketOrder, LimitOrder, Contract, Bond, Index, util
     HAS_IB_INSYNC = True
 except ImportError:
     HAS_IB_INSYNC = False
@@ -56,7 +56,8 @@ class IBKREngine:
             return True
 
         # 自動防衝突候選 Client ID 清單
-        candidate_ids = [self.client_id, self.client_id + 1, self.client_id + 2, self.client_id + 5, self.client_id + 10]
+        import random
+        candidate_ids = [self.client_id, self.client_id + 5, self.client_id + 15, random.randint(500, 899)]
         for cid in candidate_ids:
             try:
                 self.ib = IB()
@@ -517,6 +518,39 @@ class IBKREngine:
         except Exception as e:
             logger.error(f"固定收益委託發送失敗: {e}")
             return {"success": False, "msg": f"債券委託失敗: {e}"}
+
+    def get_vix_term_structure(self) -> Dict[str, float]:
+        """
+        透過 TWS API 原生獲取 CBOE 波動率指數期限結構 (VIX 30D, VIX3M 90D, VIX9D 9D)。
+        機構低延遲專線，若查詢失敗返回空字典。
+        """
+        if not self.connect():
+            return {}
+        try:
+            contracts = {
+                "vix": Index('VIX', 'CBOE'),
+                "vix3m": Index('VIX3M', 'CBOE'),
+                "vix9d": Index('VIX9D', 'CBOE')
+            }
+            self.ib.qualifyContracts(*contracts.values())
+
+            results = {}
+            for key, contract in contracts.items():
+                if getattr(contract, "conId", 0):
+                    bars = self.ib.reqHistoricalData(
+                        contract,
+                        endDateTime='',
+                        durationStr='2 D',
+                        barSizeSetting='1 day',
+                        whatToShow='TRADES',
+                        useRTH=True
+                    )
+                    if bars:
+                        results[key] = round(float(bars[-1].close), 2)
+            return results
+        except Exception as e:
+            logger.debug(f"TWS VIX 期限結構查詢失敗: {e}")
+            return {}
 
 
 # 單例快取實例

@@ -342,27 +342,45 @@ def render(api_key: str = ""):
         col_left, col_right = st.columns([1.1, 0.9])
 
         with col_left:
-            st.subheader("🌐 即時宏觀情緒核心 (Sentiment Engine)")
-            col_s1, col_s2, col_s3 = st.columns([1, 1, 1.2])
+            st.subheader("🌐 即時雙柱情緒與市場隱含矩陣 (Dual-Pillar Sentiment Matrix)")
+            col_s1, col_s2, col_s3, col_s4 = st.columns([1, 1, 1, 1.2])
             score = status_data.get("sentiment_score", 0.0)
+            implied_score = status_data.get("market_implied_score", 0.0)
             label = status_data.get("regime_label", "中性觀望")
             mult = status_data.get("risk_multiplier", 1.0)
 
             with col_s1:
-                st.metric("情緒得分 (Score)", f"{score:+.2f}", label)
+                st.metric("新聞外電得分", f"{score:+.2f}", "NLP / Tick 292")
             with col_s2:
-                st.metric("部位調整乘數", f"{mult}x", "黑天鵝時自動減半")
+                st.metric("市場隱含得分", f"{implied_score:+.2f}", label)
             with col_s3:
+                st.metric("動態風控乘數 (k_risk)", f"{mult}x", "依真實資本定價調節")
+            with col_s4:
                 shock_flag = status_data.get("volatility_shock_flag", False)
                 if shock_flag:
                     st.error("⚠️ **突發黑天鵝高波動警告**")
                 else:
                     st.success("🛡️ **宏觀流動性平穩**")
 
+            # 展開市場隱含三維度資本指標細節
+            try:
+                from modules.database import get_recent_sentiment_matrix_logs
+                df_sm = get_recent_sentiment_matrix_logs(1)
+                if not df_sm.empty:
+                    row_sm = df_sm.iloc[0]
+                    with st.expander("🔍 檢視市場真實資本定價三維度細節 (VIX 期限結構 / 信用利差 / 尾部偏態)", expanded=False):
+                        m_c1, m_c2, m_c3, m_c4 = st.columns(4)
+                        m_c1.metric("VIX 30D / 90D 比值", f"{row_sm['vix_ratio_30_90']:.2f}x", f"現價 {row_sm['vix']:.1f} vs {row_sm['vix3m']:.1f}", delta_color="inverse" if row_sm['vix_ratio_30_90'] > 1.0 else "normal")
+                        m_c2.metric("HY 信用利差 5D 加速度", f"{row_sm['hy_oas_5d_diff']:+.1f} bps", f"OAS {row_sm['hy_oas']:.2f}%", delta_color="inverse" if row_sm['hy_oas_5d_diff'] > 15 else "normal")
+                        m_c3.metric("CBOE SKEW 尾部偏態", f"{row_sm['skew']:.1f}", "黑天鵝深度賣權需求")
+                        m_c4.metric("CBOE VVIX 波動率不確定性", f"{row_sm['vvix']:.1f}", "二階波動率指數")
+            except Exception as d_err:
+                pass
+
             st.markdown(
                 """
                 <div style="font-size:12px; color:#6b7280; margin-bottom:12px;">
-                    💡 <b>自建模型接口規範</b>：本模組遵循 <code>docs/SENTIMENT_ENGINE_SPEC.md</code> 標準架構，未來可無痛熱插拔自定義深度學習模型。
+                    💡 <b>雙柱計量架構</b>：整合「真實資本定價 (70%)」與「即時外電黑天鵝 (30%)」，嚴格在不侵犯策略進出場 Alpha 前提下動態調節開倉預算。
                 </div>
                 """,
                 unsafe_allow_html=True
