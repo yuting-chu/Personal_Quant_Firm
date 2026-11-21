@@ -717,17 +717,22 @@ def render(api_key: str):
     # ==========================================
     # 10. Yahoo Finance 全球即時財經頭條
     # ==========================================
-    st.markdown("#### 📰 即時全球財經頭條")
+    st.markdown("#### 📰 即時全球財經頭條 (TWS 原生外電 / 機構專線)")
     news_list = fetch_yahoo_finance_news()
 
     if not news_list:
         st.info("暫無即時新聞或連線載入中...")
     else:
         for idx, item in enumerate(news_list[:5]):
+            source_tag = item.get("source", "TWS / 機構外電")
+            provider = item.get("provider", "TWS")
+            link_target = item.get("link", "#")
+            link_html = f'<a href="{link_target}" target="_blank" style="color: #00cc96; text-decoration: none; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center;">🔗 點擊閱讀來源報導 &rarr;</a>' if link_target and link_target != "#" else f'<span style="color: #8b949e; font-size: 12px;">來源專線: {source_tag}</span>'
+            
             news_html = f"""<div style="background-color: #161922; border-left: 4px solid #00cc96; padding: 14px 18px; border-radius: 6px; margin-bottom: 12px; border-top: 1px solid #232733; border-right: 1px solid #232733; border-bottom: 1px solid #232733;">
 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
 <div style="font-size: 15px; font-weight: bold; color: #ffffff; line-height: 1.4; margin-bottom: 6px;">
-📌 {item['title']}
+📌 [{provider}] {item['title']}
 </div>
 <span style="font-size: 11px; color: #8b949e; white-space: nowrap; margin-left: 15px; background: #212634; padding: 2px 8px; border-radius: 4px;">
 🕒 {item['date']}
@@ -737,9 +742,7 @@ def render(api_key: str):
 【白話重點解讀】該事件涉及重要資金與市場流向，可能連帶影響科技股與大盤短期波動。
 </div>
 <div>
-<a href="{item['link']}" target="_blank" style="color: #00cc96; text-decoration: none; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center;">
-🔗 點擊閱讀 Yahoo Finance 完整原始報導 &rarr;
-</a>
+{link_html}
 </div>
 </div>"""
             st.markdown(clean_html(news_html), unsafe_allow_html=True)

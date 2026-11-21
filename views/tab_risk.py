@@ -689,10 +689,14 @@ def render(
         st.markdown("#### 📡 即時全球宏觀風險雷達")
         news_items = fetch_yahoo_finance_news()
         for item in news_items[:4]:
+            source_tag = item.get("source", "TWS / 財經快訊")
+            title_text = item.get('title', '')
+            link_target = item.get('link', '#')
+            link_style = "cursor:default;" if link_target == "#" else ""
             st.markdown(
                 f"<div style='background-color:#1a1d28;padding:10px;border-radius:6px;border-left:3px solid #ff4b4b;margin-bottom:8px;'>"
-                f"<a href='{item['link']}' target='_blank' style='color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;display:block;'>{item['title'][:65]}...</a>"
-                f"<div style='font-size:10px;color:#718096;margin-top:3px;'>來源: Yahoo Finance 實時快訊</div></div>",
+                f"<a href='{link_target}' target='_blank' style='color:#e2e8f0;text-decoration:none;font-size:12px;font-weight:600;display:block;{link_style}'>{title_text[:65]}...</a>"
+                f"<div style='font-size:10px;color:#718096;margin-top:3px;'>來源: {source_tag}</div></div>",
                 unsafe_allow_html=True
             )
 
